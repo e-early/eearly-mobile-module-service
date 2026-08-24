@@ -1,0 +1,46 @@
+services:
+  eearly_db:
+    container_name: eearly_db
+    image: postgres:16.3
+    ports:
+      - 5433:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - eearly_db_data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: [ "CMD", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  eearly_mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: eearly_mailhog
+    ports:
+      - 1025:1025
+      - 8025:8025
+  eearly_nginx:
+    image: fabiocicerchia/nginx-lua:1.27.0-alpine
+    container_name: eearly_nginx
+    ports:
+      - 80:80
+    environment:
+      - EEARLY_API_HOST=host.docker.internal
+      - EEARLY_API_REST_PORT=8081
+      - EEARLY_API_GRPC_PORT=8082
+      - EEARLY_KEYCLOAK_URL=http://eearly_keycloak:8080
+      - EEARLY_KEYCLOAK_REALM=eEarly
+      - EEARLY_KEYCLOAK_PROXY_HOST_HEADER=false
+      - EEARLY_KEYCLOAK_CLIENT_ID=eearly-backend
+      - EEARLY_KEYCLOAK_CLIENT_SECRET=bA3F5CNd4KIZbnpNtEVi7b6zNdX7CbVd
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./nginx/templates/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  eearly_db_data:

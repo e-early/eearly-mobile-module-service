@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package si.result.eearly.genproto;
+
+option java_multiple_files = true;
+option java_package = "si.result.eearly.genproto";
+option java_outer_classname = "UserDeviceProto";
+
+import "responseError.proto";
+
+service UserDeviceService {
+  rpc AddApiKey (AddApiKeyRequest) returns (AddApiKeyResponse) {}
+  rpc UpdateApiKey (AddApiKeyRequest) returns (AddApiKeyResponse) {}
+  rpc GetApiKeys (GetApiKeysRequest) returns (GetApiKeysResponse) {}
+  rpc DeleteApiKey(DeleteApiKeyRequest) returns (DeleteApiKeyResponse) {}
+}
+
+message ApiKey {
+  string deviceId = 1;
+  string value = 2;
+}
+
+message DeviceApiKey {
+  string deviceId = 1;
+  string name = 2;
+  string apiKey = 3;
+}
+
+message DeleteApiKeyRequest {
+  string deviceId = 1;
+}
+
+message DeleteApiKeyResponse {
+}
+
+message AddApiKeyRequest {
+    ApiKey apiKey = 1;
+}
+
+message AddApiKeyResponse {
+  Error error = 1;
+}
+
+message GetApiKeysRequest {}
+
+message GetApiKeysResponse {
+  repeated DeviceApiKey devices = 1;
+}

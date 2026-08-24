@@ -1,0 +1,115 @@
+logging.level:
+  si.result.eearly: DEBUG
+  org.springframework:
+    web.client.RestTemplate: DEBUG
+    security: DEBUG
+    cache: TRACE
+
+logging:
+  file:
+    name: ${LOGGING_FILE_PATH}
+  loggers:
+    http:
+      enabled: true
+      log-response: true
+      log-authorization-header: false
+    method:
+      enabled: true
+
+server:
+  port: 8081
+
+grpc:
+  server:
+    port: 8082
+    reflection-enabled: true
+
+hashids:
+  min-hash-length: 6
+
+keycloak:
+  auth-server-url: ${KEYCLOAK_URL}
+  realm: ${KEYCLOAK_REALM:eearly-mobile}
+  admin:
+    client:
+      id: ${KEYCLOAK_ADMIN_CLIENT_ID:eearly-user-administrator}
+      secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+  mobile:
+    client:
+      id: ${KEYCLOAK_MOBILE_CLIENT_ID:eearly-mobile}
+  admin-service:
+    client:
+      id: ${KEYCLOAK_ADMIN_SERVICE_CLIENT_ID:admin-service}
+
+spring:
+  application.name: eearly
+
+  web.resources.add-mappings: true
+  mvc:
+    # throw-exception-if-no-handler-found: true
+    static-path-pattern: "/**"
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_URI:${keycloak.auth-server-url}/realms/${keycloak.realm}}
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+      allowed-methods: GET, POST, PUT, DELETE, OPTIONS
+
+  flyway:
+    enabled: false
+
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      schema: ${DB_SCHEMA:eearly_mobile}
+
+taskqueue:
+  retry.count: 10
+  cron.expression: 0/15 * * * * *
+  retry.delay.seconds: 10
+
+sensor:
+  dexcom:
+    base-uri: ${DEXCOM_BASE_URI:https://sandbox-api.dexcom.com}
+    redirect-uri: ${DEXCOM_REDIRECT_URI}
+    client:
+      id: ${DEXCOM_CLIENT_ID}
+      secret: ${DEXCOM_CLIENT_SECRET}
+
+  ultrahuman:
+    base-uri: https://partner.ultrahuman.com
+    authorization: changeme
+
+# Service account location. Can be a filesystem path or a classpath resource. NB: Generate and use your own firebase-service-account.json file.
+firebase:
+  service-account: classpath:eearly-81b14-7704d412928d.json
+
+ehr:
+  base-uri: ${EHR_BASE_URL}
+  keycloak:
+    base-url: ${EHR_KEYCLOAK_BASE_URL}
+    realm: ${EHR_KEYCLOAK_REALM:eearly-ehrbase}
+    client-id: ${EHR_KEYCLOAK_CLIENT_ID:ehrbase}
+    client-secret: ${EHR_KEYCLOAK_CLIENT_SECRET}
+
+onboarding:
+  api_base_url: ${ONBOARDING_API_BASE_URL}
+  app:
+    base-url: ${ONBOARDING_BASE_URL}
+    ios:
+      store-url: ${MOBILE_APP_IOS_STORE_URL:https://eearly.result.si}
+    android:
+      store-url: ${MOBILE_APP_ANDROID_STORE_URL:https://si.result.eearly}
+    fallback:
+      url: ${MOBILE_APP_STORE_FALLBACK_URL}
+  keycloak:
+    base-url: ${MOBILE_KEYCLOAK_BASE_URL}
+    realm: ${MOBILE_KEYCLOAK_REALM:eearly-mobile}
+    client-id: ${MOBILE_KEYCLOAK_CLIENT_ID:eearly-mobile}
+    host: ${MOBILE_KEYCLOAK_HOST}

@@ -1,0 +1,253 @@
+syntax = "proto3";
+
+package si.result.eearly.genproto;
+
+option java_multiple_files = true;
+option java_package = "si.result.eearly.genproto";
+option java_outer_classname = "UltrahumanProto";
+
+service UltrahumanService {
+    rpc GetMetrics (GetMetricsRequest) returns (GetMetricsResponse) {
+    }
+}
+
+message GetMetricsRequest {
+  string deviceId = 1;
+  int64 date = 2;
+}
+
+message GetMetricsResponse {
+  UltrahumanData data = 1;
+  string error = 2;
+  int32 status = 3;
+}
+
+message UltrahumanData {
+  repeated UltrahumanMetricData metricData = 1;
+}
+
+message UltrahumanMetricData {
+  string type = 1;
+  UltrahumanObject object = 2;
+}
+
+message UltrahumanObject {
+  int64 dayStartTimestamp = 1;
+  string title = 2;
+  repeated UltrahumanValue values = 3;
+  int32 value = 4;
+  int32 lastReading = 5;
+  string unit = 6;
+  string subtitle = 7;
+  double total = 8;
+  double avg = 9;
+  string trendTitle = 10;
+  string trendDirection = 11;
+
+  // Sleep object
+  int64 bedtimeStart = 12;
+  int64 bedtimeEnd = 13;
+  repeated QuickMetric quickMetrics = 14;
+  repeated QuickMetricTiled quickMetricsTiled = 15;
+  repeated SleepStage sleepStages = 16;
+  SleepGraph sleepGraph = 17;
+  MovementGraph movementGraph = 18;
+  HrGraph hrGraph = 19;
+  HrvGraph hrvGraph = 20;
+  TempGraph tempGraph = 21;
+  RespiratoryGraph respiratoryGraph = 22;
+  repeated Summary summary = 23;
+  SleepInertiaTrend sleepInertiaTrend = 24;
+  SleepInertiaInterpretation sleepInertiaInterpretation = 25;
+  ScoreTrend scoreTrend = 26;
+  repeated TrackingParam indexTrackingParamscoreTrend = 27;
+  Spo2 spo2 = 28;
+  TossTurn tossTurn = 29;
+  SleepCycles sleepCycles = 30;
+}
+
+message UltrahumanValue {
+  double value = 1;
+  int64 timestamp = 2;
+}
+
+message QuickMetric {
+  string title = 1;
+  string displayText = 2;
+  string unit = 3;
+  int32 value = 4;
+  string deeplink = 5;
+  string type = 6;
+  string educationModalDeeplink = 7;
+  repeated TrackingParam trackingParams = 8;
+  string displayTextMarkedUp = 9;
+}
+
+message TrackingParam {
+  string keyName = 1;
+  string value = 2;
+}
+
+message QuickMetricTiled {
+  string title = 1;
+  string value = 2;
+  string tag = 3;
+  string tagColor = 4;
+  string deeplink = 5;
+  string trendsUnit = 6;
+  int32 trendsValue = 7;
+  string type = 8;
+}
+
+message SleepStage {
+  string title = 1;
+  string type = 2;
+  int32 percentage = 3;
+  string stageTimeText = 4;
+  int32 stageTime = 5;
+}
+
+message SleepGraph {
+  string title = 1;
+  repeated SleepData data = 2;
+  string educationModalDeeplink = 3;
+}
+
+message SleepData {
+  int64 start = 1;
+  int64 end = 2;
+  string type = 3;
+  int32 tossTurn = 4;
+}
+
+message MovementGraph {
+  string title = 1;
+  repeated MovementData data = 2;
+}
+
+message MovementData {
+  int64 timestamp = 1;
+  string type = 2;
+}
+
+message HrGraph {
+  string title = 1;
+  repeated UltrahumanValue data = 2;
+  VerticalZone verticalZone = 3;
+  InfoButton infoButton = 4;
+  string unit = 5;
+  GistObject gistObject = 6;
+}
+
+message VerticalZone {
+  int64 start = 1;
+  int64 end = 2;
+  string title = 3;
+}
+
+message InfoButton {
+  string title = 1;
+  string deeplink = 2;
+}
+
+message GistObject {
+  string title = 1;
+  string detailText = 2;
+  string detailUnitText = 3;
+  string subtitle = 4;
+  int32 avg = 5;
+  int32 min = 6;
+  int32 max = 7;
+}
+
+message HrvGraph {
+  string title = 1;
+  repeated UltrahumanValue data = 2;
+  string zone = 3;
+  InfoButton infoButton = 4;
+  string unit = 5;
+  GistObject gistObject = 6;
+}
+
+message TempGraph {
+  string title = 1;
+  repeated UltrahumanValue data = 2;
+  InfoButton infoButton = 3;
+  string unit = 4;
+  GistObject gistObject = 5;
+}
+
+message RespiratoryGraph {
+}
+
+message Summary {
+  string title = 1;
+  string state = 2;
+  string stateTitle = 3;
+  double score = 4;
+  string educationModalDeeplink = 5;
+  repeated TrackingParam trackingParams = 6;
+}
+
+message SleepInertiaTrend {
+  repeated UltrahumanValue data = 1;
+  GistObject gistObject = 2;
+  string title = 3;
+  string unit = 4;
+  Zone zone = 5;
+}
+
+message Zone {
+  string title = 1;
+  int32 start = 2;
+  int32 end = 3;
+}
+
+message SleepInertiaInterpretation {
+  string header = 1;
+  string title = 2;
+  string subtitle = 3;
+  string educationModalDeeplink = 4;
+}
+
+message ScoreTrend {
+  int32 dayAvg = 1;
+  int32 weekAvg = 2;
+  int32 monthAvg = 3;
+  int32 yearAvg = 4;
+}
+
+message Spo2 {
+  string title = 1;
+  double value = 3;
+  bool isBeta = 4;
+  string educationModalDeeplink = 5;
+}
+
+message TossTurn {
+  string title = 1;
+  string subtitle = 2;
+  double value = 3;
+  bool isBeta = 4;
+  string educationModalDeeplink = 5;
+}
+
+message SleepCycles {
+  string title = 1;
+  string infoDeeplink = 2;
+  repeated Cycle cycles = 3;
+  repeated Legend legend = 4;
+}
+
+message Cycle {
+  int64 startTime = 1;
+  int64 endTime = 2;
+  string cycleType = 3;
+  string color = 4;
+  string iconUrl = 5;
+}
+
+message Legend {
+  string title = 1;
+  string color = 2;
+}

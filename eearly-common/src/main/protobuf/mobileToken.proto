@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package si.result.eearly.genproto;
+
+option java_package = "si.result.eearly.genproto";
+option java_outer_classname = "MobileTokenProto";
+
+service MobileTokenService {
+  rpc CreateMobileToken (CreateMobileTokenRequest) returns (MobileTokenEmptyResponse) {}
+
+  rpc DeleteMobileToken (DeleteMobileTokenRequest) returns (MobileTokenEmptyResponse) {}
+
+  rpc DeleteAllMobileToken (DeleteAllMobileTokensRequest) returns (MobileTokenEmptyResponse) {}
+
+  rpc UpdateMobileToken (UpdateMobileTokenRequest) returns (MobileTokenEmptyResponse) {}
+
+  rpc GetAllMobileTokens (GetAllMobileTokensRequest) returns (MobileTokenResponse) {}
+}
+
+// REQUESTS
+
+message CreateMobileTokenRequest {
+  string token = 1;
+}
+
+message DeleteMobileTokenRequest {
+  string token = 1;
+}
+
+message DeleteAllMobileTokensRequest {}
+
+message UpdateMobileTokenRequest {
+  string oldToken = 1;
+  string newToken = 2;
+}
+
+message GetAllMobileTokensRequest {}
+
+// RESPONSES
+
+message MobileTokenResponse {
+  repeated string tokens = 1;
+}
+
+message MobileTokenEmptyResponse {}

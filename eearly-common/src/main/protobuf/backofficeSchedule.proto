@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package si.result.eearly.genproto;
+
+option java_multiple_files = true;
+option java_package = "si.result.eearly.genproto";
+option java_outer_classname = "BackofficeScheduleProto";
+
+import "schedule.proto";
+import "responseError.proto";
+
+service BackofficeScheduleService {
+  rpc UpsertSchedule (UpsertScheduleRequest) returns (UpsertScheduleResponse) {}
+  rpc DeleteSchedule (DeleteScheduleRequest) returns (DeleteScheduleResponse) {}
+  rpc CreateUpdateSchedule (CreateUpdateScheduleRequest) returns (GetScheduleResponse) {}
+  rpc CreateUpdateScheduleEntry (CreateUpdateScheduleEntryRequest) returns (GetScheduleEntriesResponse) {}
+  rpc AddUserToSchedule (AddUserToScheduleRequest) returns (GetScheduleResponse) {}
+  rpc RemoveUserFromSchedule (RemoveUserFromScheduleRequest) returns (GetScheduleEmptyResponse) {}
+  rpc GetSchedulesForCaretaker (GetSchedulesForCaretakerRequest) returns (GetSchedulesResponse) {}
+  rpc GetScheduleEntriesForCaretaker (GetScheduleEntriesForCaretakerRequest) returns (GetScheduleEntriesResponse) {}
+  rpc DeleteScheduleEntry (DeleteScheduleEntryRequest) returns (GetScheduleResponse) {}
+}
+
+message CreateUpdateScheduleRequest {
+  string id = 1;
+  string name = 2;
+  string description  = 3;
+  bool active = 4;
+}
+
+message CreateUpdateScheduleEntryRequest {
+  string id = 1;
+  string measurementTypeId = 2;
+  string scheduledAt = 3;
+  string scheduledMode = 4;
+  MeasurementMode measurementMode = 5;
+  string description = 6;
+  int32 measurementsInBatch = 7;
+  int32 intervalMinutes = 8;
+  string scheduleId = 9;
+}
+
+message UpsertScheduleRequest {
+  string id = 1;
+  string name = 2;
+  string description  = 3;
+  bool active = 4;
+  string userId = 5;
+  string caretakerId = 6;
+  repeated CreateUpdateScheduleEntryRequest measurements = 7;
+}
+
+message UpsertScheduleResponse {
+  Error error = 1;
+}
+
+message DeleteScheduleRequest {
+  string scheduleId = 1;
+  string keycloakId = 2;
+}
+
+message DeleteScheduleResponse {
+  Error error = 1;
+}
+
+message GetScheduleEntriesForCaretakerRequest {
+  string scheduleId = 1;
+  string filter = 2;
+}
+
+message AddUserToScheduleRequest {
+  string userId = 1;
+  string scheduleId = 2;
+}
+
+message RemoveUserFromScheduleRequest {
+  string userId = 1;
+  string scheduleId = 2;
+}
+
+message GetSchedulesForCaretakerRequest {
+  string filter = 1;
+}
+
+message DeleteScheduleEntryRequest {
+  string scheduleId = 1;
+  string scheduleEntryId = 2;
+}
+
+message GetScheduleEmptyResponse {}

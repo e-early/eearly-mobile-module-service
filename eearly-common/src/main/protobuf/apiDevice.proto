@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package si.result.eearly.genproto;
+
+option java_multiple_files = true;
+option java_package = "si.result.eearly.genproto";
+option java_outer_classname = "ApiDeviceProto";
+
+import "measurement.proto";
+
+service ApiDeviceService {
+    rpc CheckHeartbeat (CheckHeartbeatRequest) returns (CheckHeartbeatResponse) {
+    }
+
+    rpc GetMeasurement (GetMeasurementRequest) returns (GetMeasurementResponse) {
+    }
+
+    rpc GetDexcomAuthorizationUri (GetDexcomAuthorizationUriRequest) returns (GetDexcomAuthorizationUriResponse) {
+    }
+}
+
+message CheckHeartbeatRequest {
+    string deviceId = 1;
+}
+
+message CheckHeartbeatResponse {
+    int32 code = 1;
+    string error = 2;
+}
+
+message GetMeasurementRequest {
+    string deviceId = 1;
+    string measurementTypeId = 2;
+    int64 startDate = 3;
+    int64 endDate = 4;
+}
+
+message GetMeasurementResponse {
+    repeated Measurement measurements = 1;
+}
+
+message GetDexcomAuthorizationUriRequest {
+    string state = 1;
+}
+
+message GetDexcomAuthorizationUriResponse {
+    string authorizationUri = 1;
+    string redirectUri = 2;
+}

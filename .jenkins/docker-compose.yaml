@@ -1,0 +1,99 @@
+services:
+  eearly-mobile-db:
+    image: postgres:17
+    container_name: '{{ component_name }}-db'
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: '{{ db_name }}'
+      POSTGRES_USER: '{{ db_user }}'
+      POSTGRES_PASSWORD: '{{ db_password }}'
+
+    ports:
+      - '{{ db_port }}:5432'
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+    networks:
+      - mobile-net
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ db_user }}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  eearly-mobile-service:
+    image: nexus.result.si/{{ project_name }}/{{ component_name }}:{{ tag }}
+    container_name: '{{ component_name }}'
+    pull_policy: always
+    restart: unless-stopped
+
+    depends_on:
+      eearly-mobile-db:
+        condition: service_healthy
+
+    environment:
+      DB_URL: '{{ db_url }}'
+      DB_SCHEMA: '{{ db_schema }}'
+      DB_USERNAME: '{{ flyway_db_username }}'
+      DB_PASSWORD: '{{ flyway_db_password }}'
+      KEYCLOAK_URL: '{{ keycloak_url }}'
+      KEYCLOAK_REALM: '{{ keycloak_realm }}'
+      KEYCLOAK_ADMIN_CLIENT_ID: '{{ keycloak_admin_client_id }}'
+      KEYCLOAK_ADMIN_CLIENT_SECRET: '{{ keycloak_admin_client_secret }}'
+      KEYCLOAK_MOBILE_CLIENT_ID: '{{ keycloak_mobile_client_id }}'
+      KEYCLOAK_ADMIN_SERVICE_CLIENT_ID: '{{ keycloak_admin_service_client_id }}'
+      ONBOARDING_BASE_URL: '{{ onboarding_base_url }}'
+      MOBILE_APP_IOS_STORE_URL: '{{ mobile_app_ios_store_url }}'
+      MOBILE_APP_ANDROID_STORE_URL: '{{ mobile_app_android_store_url }}'
+      MOBILE_APP_STORE_FALLBACK_URL: '{{ mobile_app_store_fallback_url }}'
+      MOBILE_KEYCLOAK_BASE_URL: '{{ mobile_keycloak_base_url }}'
+      MOBILE_KEYCLOAK_REALM: '{{ mobile_keycloak_realm }}'
+      MOBILE_KEYCLOAK_CLIENT_ID: '{{ mobile_keycloak_client_id }}'
+      MOBILE_KEYCLOAK_HOST: '{{ mobile_keycloak_host }}'
+      EHR_BASE_URL: '{{ ehr_base_url }}'
+      EHR_KEYCLOAK_BASE_URL: '{{ ehr_keycloak_base_url }}'
+      EHR_KEYCLOAK_REALM: '{{ ehr_keycloak_realm }}'
+      EHR_KEYCLOAK_CLIENT_ID: '{{ ehr_keycloak_client_id }}'
+      EHR_KEYCLOAK_CLIENT_SECRET: '{{ ehr_keycloak_client_secret }}'
+      DEXCOM_BASE_URI: '{{ dexcom_base_uri }}'
+      DEXCOM_REDIRECT_URI: '{{ dexcom_redirect_uri }}'
+      DEXCOM_CLIENT_ID: '{{ dexcom_client_id }}'
+      DEXCOM_CLIENT_SECRET: '{{ dexcom_client_secret }}'
+      ONBOARDING_API_BASE_URL: '{{ grpc_domain }}'
+      LOGGING_FILE_PATH: /var/log/{{ project_name }}/{{  component_name }}.log
+    
+    ports:
+      - '{{ api_port }}:8081'
+      - '{{ grpc_port }}:8082'
+
+    volumes:
+      - '{{ logging_volume_path }}:/var/log/{{ project_name }}:z'
+
+    networks:
+      - proxy
+      - mobile-net
+
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+
+      - traefik.http.routers.{{ component_name }}.rule=Host(`{{ service_domain }}`) && PathPrefix(`/{{ component_name }}`)
+      - traefik.http.routers.{{ component_name }}.entrypoints=web
+      - traefik.http.routers.{{ component_name }}.middlewares={{ component_name }}-middleware
+      - traefik.http.middlewares.{{ component_name }}-middleware.stripprefix.prefixes=/{{ component_name }}
+
+      - traefik.http.routers.{{ component_name }}-assetlinks.rule=Host(`{{ service_domain }}`) && Path(`/.well-known/assetlinks.json`)
+      - traefik.http.routers.{{ component_name }}-assetlinks.entrypoints=web
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  mobile-net:
+    driver: bridge
+  proxy:
+    external: true

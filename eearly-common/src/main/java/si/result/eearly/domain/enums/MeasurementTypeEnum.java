@@ -1,0 +1,16 @@
+package si.result.eearly.domain.enums;
+
+public enum MeasurementTypeEnum {
+
+    UNKNOWN_MEASUREMENT_TYPE,
+    BLOOD_PRESSURE,
+    BLOOD_GLUCOSE,
+    BODY_WEIGHT,
+    BODY_HEIGHT,
+    HEART_RATE,
+    OXYGEN_SATURATION,
+    HEART_RATE_VARIABILITY,
+    STRESS_LEVEL,
+    GLUCOSE_VARIABILITY,
+    BODY_TEMPERATURE
+}

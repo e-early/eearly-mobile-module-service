@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package si.result.eearly.genproto;
+
+option java_multiple_files = true;
+option java_package = "si.result.eearly.genproto";
+option java_outer_classname = "ProfileProto";
+
+import "responseError.proto";
+
+service ProfileService {
+  rpc UpsertProfile (UpsertProfileRequest) returns (UpsertProfileResponse) {}
+  rpc SendFCMNotificationForToken (SendFCMNotificationForTokenRequest) returns (SendFCMNotificationForTokenResponse) {}
+  rpc UpdateUsername (UpdateUsernameRequest) returns (UpdateUsernameResponse) {}
+  rpc GetProfile (GetProfileRequest) returns (GetProfileResponse) {}
+}
+
+
+message Profile {
+  string userId = 1;
+  string username = 2;
+  string picture = 3;
+  bool notificationDaySummary = 4;
+  string notificationDaySummaryTime = 5;
+  bool notificationMeasurementDue = 6;
+  int32 notificationMeasurementDueMinutes = 7;
+  bool notificationNoInternet = 8;
+  bool notificationNoBluetooth = 9;
+}
+message GetProfileRequest {}
+
+message GetProfileResponse {
+  Profile profile = 1;
+}
+
+message SendFCMNotificationForTokenRequest {
+  string token =1;
+  string title = 2;
+  string body = 3;
+}
+
+message SendFCMNotificationForTokenResponse {
+  string fcmReturnMessage = 1;
+  Error error = 2;
+}
+
+message UpsertProfileRequest {
+  bytes   picture = 1;
+  bool    notificationDaySummary = 2;
+  string  notificationDaySummaryTime = 3;           // Meant as time in HH:mm:ss format
+  bool    notificationMeasurementDue = 4;
+  int32   notificationMeasurementDueMinutes = 5;    // Meant as the offset/delta, so we use minutes in total
+  bool    notificationNoInternet = 6;
+  bool    notificationNoBluetooth = 7;
+}
+
+message UpsertProfileResponse {
+  string  userId = 1;
+  bool    notificationDaySummary = 2;
+  string  notificationDaySummaryTime = 3;         // Meant as time in HH:mm:ss format
+  bool    notificationMeasurementDue = 4;
+  int32   notificationMeasurementDueMinutes = 5;  // Meant as the offset/delta, so we use minutes in total
+  bool    notificationNoInternet = 6;
+  bool    notificationNoBluetooth = 7;
+}
+
+message UpdateUsernameRequest {
+  string username = 1;
+}
+
+message UpdateUsernameResponse {
+  Error error = 1;
+}

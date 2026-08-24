@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package si.result.eearly.genproto;
+
+option java_package = "si.result.eearly.genproto";
+option java_outer_classname = "ManufacturerProto";
+
+service ManufacturerService {
+  rpc GetManufacturers(GetManufacturersRequestEmpty) returns (GetManufacturersResponse) {}
+}
+
+message GetManufacturersRequestEmpty {}
+
+message GetManufacturersResponse {
+  repeated Manufacturer manufacturers = 1;
+}
+
+message Manufacturer {
+  string id = 1;
+  string name = 2;
+}

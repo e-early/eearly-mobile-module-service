@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package si.result.eearly.genproto;
+
+option java_multiple_files = true;
+option java_package = "si.result.eearly.genproto";
+option java_outer_classname = "DeviceProto";
+
+import "measurementType.proto";
+
+service DeviceService {
+  rpc GetSupportedDevice(GetSupportedDeviceRequest) returns (GetSupportedDeviceResponse) {}
+  rpc GetSupportedDevicesForManufacturer(GetSupportedDevicesForManufacturerRequest) returns (GetSupportedDevicesForManufacturerResponse) {}
+}
+
+message GetSupportedDeviceRequest {
+  string deviceId = 1;
+}
+
+message GetSupportedDeviceResponse {
+  string deviceId = 1;
+  string deviceName = 2;
+  string description = 3;
+  ConnectionType connectionType = 4;
+  bytes picture = 5;
+  repeated MeasurementType measurementTypes = 6;
+  repeated string bluetoothDeviceNames = 7;
+}
+
+message GetSupportedDevicesForManufacturerRequest {
+  string manufacturerId = 1;
+}
+
+message GetSupportedDevicesForManufacturerResponse {
+  repeated DeviceSummary devices = 1;
+}
+
+message DeviceSummary {
+  string deviceId = 1;
+  string deviceName = 2;
+}
+
+enum ConnectionType {
+  CONNECTION_UNSPECIFIED = 0;
+  CONNECTION_API = 1;
+  CONNECTION_BLUETOOTH = 2;
+}

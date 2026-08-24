@@ -1,0 +1,210 @@
+syntax = "proto3";
+
+package si.result.eearly.genproto;
+
+option java_multiple_files = true;
+option java_package = "si.result.eearly.genproto";
+option java_outer_classname = "DexcomProto";
+
+service DexcomService {
+    rpc GetAlerts (GetAlertsRequest) returns (GetAlertsResponse) {
+    }
+
+    rpc GetCalibrations (GetCalibrationsRequest) returns (GetCalibrationsResponse) {
+    }
+
+    rpc GetEgvs (GetEgvsRequest) returns (GetEgvsResponse) {
+    }
+
+    rpc GetDataRange (GetDataRangeRequest) returns (GetDataRangeResponse) {
+    }
+
+    rpc GetDevices (GetDevicesRequest) returns (GetDevicesResponse) {
+    }
+
+    rpc GetEvents (GetEventsRequest) returns (GetEventsResponse) {
+    }
+}
+
+message GetAlertsRequest {
+  string deviceId = 1;
+  int64 startDate = 2;
+  int64 endDate = 3;
+}
+
+message GetAlertsResponse {
+  string recordType = 1;
+  string recordVersion = 2;
+  string userId = 3;
+  repeated Alert records = 4;
+}
+
+message Alert {
+  string recordId = 1;
+  string systemTime = 2;
+  string displayTime = 3;
+  string alertName = 4;
+  string alertState = 5;
+  string displayDevice = 6;
+  string transmitterGeneration = 7;
+  string transmitterId = 8;
+  string displayApp = 9;
+}
+
+message GetCalibrationsRequest {
+  string deviceId = 1;
+  int64 startDate = 2;
+  int64 endDate = 3;
+}
+
+message GetCalibrationsResponse {
+  string recordType = 1;
+  string recordVersion = 2;
+  string userId = 3;
+  repeated Calibration records = 4;
+}
+
+message Calibration {
+  string recordId = 1;
+  string systemTime = 2;
+  string displayTime = 3;
+  string unit = 4;
+  int32 value = 5;
+  string displayDevice = 6;
+  string transmitterId = 7;
+  int32 transmitterTicks = 8;
+  string transmitterGeneration = 9;
+}
+
+message GetEgvsRequest {
+  string deviceId = 1;
+  int64 startDate = 2;
+  int64 endDate = 3;
+}
+
+message GetEgvsResponse {
+  string recordType = 1;
+  string recordVersion = 2;
+  string userId = 3;
+  repeated Egv records = 4;
+}
+
+message Egv {
+  string recordId = 1;
+  string systemTime = 2;
+  string displayTime = 3;
+  string transmitterId = 4;
+  int32 transmitterTicks = 5;
+  int32 value = 6;
+  string trend = 7;
+  int32 trendRate = 8;
+  string unit = 9;
+  string rateUnit = 10;
+  string displayDevice = 11;
+  string transmitterGeneration = 12;
+}
+
+message GetDataRangeRequest {
+  string deviceId = 1;
+  int64 lastSyncTime = 2;
+}
+
+message GetDataRangeResponse {
+  string recordType = 1;
+  string recordVersion = 2;
+  string userId = 3;
+  DataRange calibrations = 4;
+  DataRange egvs = 5;
+  DataRange events = 6;
+}
+
+message DataRange {
+  Range start = 1;
+  Range end = 2;
+}
+
+message Range {
+  string systemTime = 1;
+  string displayTime = 2;
+}
+
+message GetDevicesRequest {
+  string deviceId = 1;
+}
+
+message GetDevicesResponse {
+  string recordType = 1;
+  string recordVersion = 2;
+  string userId = 3;
+  repeated Device records = 4;
+}
+
+message Device {
+  string transmitterGeneration = 1;
+  string displayDevice = 2;
+  string displayApp = 3;
+  string lastUploadDate = 4;
+  string transmitterId = 5;
+  repeated AlertSchedule alertSchedules = 6;
+}
+
+message AlertSchedule {
+  AlertScheduleSettings alertScheduleSettings = 1;
+  repeated AlertSettings alertSettings = 2;
+}
+
+message AlertScheduleSettings {
+  string alertScheduleName = 1;
+  bool isEnabled = 2;
+  string startTime = 3;
+  string endTime = 4;
+  bool isActive = 5;
+  AlertScheduleSettingsOverride override = 6;
+  repeated string daysOfWeek = 7;
+}
+
+message AlertScheduleSettingsOverride {
+  bool isOverrideEnabled = 1;
+  string mode = 2;
+  string endTime = 3;
+}
+
+message AlertSettings {
+  string systemTime = 1;
+  string displayTime = 2;
+  string alertName = 3;
+  int32 value = 4;
+  string unit = 5;
+  int32 snooze = 6;
+  bool enabled = 7;
+  int32 secondaryTriggerCondition = 8;
+  string soundTheme = 9;
+  string soundOutputMode = 10;
+}
+
+message GetEventsRequest {
+  string deviceId = 1;
+  int64 startDate = 2;
+  int64 endDate = 3;
+}
+
+message GetEventsResponse {
+  string recordType = 1;
+  string recordVersion = 2;
+  string userId = 3;
+  repeated Event records = 4;
+}
+
+message Event {
+  string recordId = 1;
+  string systemTime = 2;
+  string displayTime = 3;
+  string eventStatus = 4;
+  string eventType = 5;
+  string eventSubType = 6;
+  double value = 7;
+  string unit = 8;
+  string transmitterId = 9;
+  string transmitterGeneration = 10;
+  string displayDevice = 11;
+}

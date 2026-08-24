@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package si.result.eearly.genproto;
+
+option java_multiple_files = true;
+option java_package = "si.result.eearly.genproto";
+option java_outer_classname = "ScheduleProto";
+
+service ScheduleService {
+  rpc GetSchedules (GetSchedulesRequest) returns (GetSchedulesResponse) {}
+  rpc GetScheduleEntries (GetScheduleEntriesRequest) returns (GetScheduleEntriesResponse) {}
+  rpc SendScheduleNotification (SendScheduleNotificationRequest) returns (SendScheduleNotificationResponse) {}
+  rpc SendMeasurementReminder (SendMeasurementReminderRequest) returns (SendMeasurementReminderResponse) {}
+  rpc GetScheduleEntriesForSchedule (GetScheduleEntriesForScheduleRequest) returns (GetScheduleEntriesResponse) {}
+}
+
+message GetScheduleEntriesForScheduleRequest {
+  string scheduleId = 1;
+}
+
+message GetSchedulesRequest {
+  string filter = 1;
+}
+
+message GetScheduleEntriesRequest {
+  string filter = 1;
+}
+
+message GetScheduleResponse {
+    Schedule schedule = 1;
+}
+
+message GetSchedulesResponse {
+  repeated Schedule schedules = 1;
+}
+
+message GetScheduleEntriesResponse {
+  repeated ScheduleEntry scheduleEntries = 1;
+}
+
+
+message Schedule {
+  string id = 1;
+  string name = 2;
+  string description  = 3;
+  string caretakerId = 4;
+  string facilityId = 5;
+  bool active = 6;
+}
+
+
+message SendScheduleNotificationRequest {
+  string scheduleId = 1;
+}
+
+message SendScheduleNotificationResponse {}
+
+message SendMeasurementReminderRequest {
+  string scheduleId = 1;
+  string scheduledAt = 2;
+  string scheduleName = 3;
+}
+
+message SendMeasurementReminderResponse {}
+
+message ScheduleEntry {
+  string id = 1;
+  string measurementTypeId = 2;
+  string scheduledAt = 3;
+  string scheduledMode = 4;
+  MeasurementMode measurementMode = 5;
+  string description = 6;
+  int32 measurementsInBatch = 7;
+  int32 intervalMinutes = 8;
+}
+
+enum MeasurementMode {
+    SINGLE = 0;
+    BATCH = 1;
+    CONTINUOUS = 2;
+}
