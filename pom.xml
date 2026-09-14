@@ -46,16 +46,27 @@
 		<build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
 	</properties>
 
+	<!--
+	  si.result.r3:r3-rest-filter, si.result.lib:spring-boot-logger, logger, spring-boot-bricks
+	  and rest-filter (the last two pulled in transitively via spring-boot-logger) are internal
+	  Result libraries normally resolved from nexus.result.si, which isn't reachable outside the
+	  organization's VPN. To let this be built and run outside the organization, their built jars
+	  are vendored into ./libs-repo and resolved from there instead ; see libs-repo/README.md for
+	  what that is and its current limitations (no license, no source, not a real publish ; a
+	  stopgap, not an open-sourcing of those libraries). If you do have nexus.result.si access,
+	  you can remove this repository and restore the original two pointing at
+	  https://nexus.result.si/repository/r3-release/ and .../result-lib/ instead.
+	-->
+	<!--
+	  Uses ${maven.multiModuleProjectDirectory}, not ${project.basedir}: the latter is resolved
+	  per-submodule in a reactor build, so it would point at (e.g.) eearly-common/libs-repo, not
+	  the repo root, for every module except the aggregator itself.
+	-->
 	<repositories>
 		<repository>
-			<id>si.result.r3.r3-release</id>
-			<name>Repository nexus.result.si for libs release</name>
-			<url>https://nexus.result.si/repository/r3-release/</url>
-		</repository>
-		<repository>
-			<id>result-lib</id>
-			<name>Repository nexus.result.si for result-lib</name>
-			<url>https://nexus.result.si/repository/result-lib/</url>
+			<id>vendored-libs</id>
+			<name>Vendored si.result.* dependencies (bundled for builds without VPN/Nexus access)</name>
+			<url>file://${maven.multiModuleProjectDirectory}/libs-repo</url>
 		</repository>
 	</repositories>
 
