@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Minimal reconstructed POM for si.result.r3:r3-rest-filter:1.0.1.
+
+  No POM was ever published to nexus.result.si for this artifact (only the jar was ever
+  uploaded there) -- this file was written by hand, from the jar's decompiled class list,
+  to declare the dependencies its classes actually need at compile/runtime (an ANTLR-generated
+  lexer/parser, a Spring MVC HandlerMethodArgumentResolver, and JPA Specification/predicate
+  helpers). Versions match si.result.lib:rest-filter's own pom.xml from the same era, since
+  r3-rest-filter is an earlier version of that same codebase under its old groupId.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>si.result.r3</groupId>
+    <artifactId>r3-rest-filter</artifactId>
+    <version>1.0.1</version>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4-runtime</artifactId>
+            <version>4.13.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+    </dependencies>
+</project>
