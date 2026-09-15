@@ -9,7 +9,6 @@ import si.result.eearly.domain.profile.Profile;
 import si.result.eearly.domain.profile.UpsertProfileCommand;
 import si.result.eearly.ehr.EhrbaseClient;
 import si.result.eearly.repository.ProfileRepository;
-import si.result.eearly.service.firebase.FirebaseService;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
@@ -22,7 +21,6 @@ import java.util.UUID;
 public class ProfileServiceImpl implements ProfileService {
 
   private final ProfileRepository profileRepository;
-  private final FirebaseService firebaseService;
   private final EhrbaseClient ehrbaseClient;
 
   @Override
@@ -58,8 +56,9 @@ public class ProfileServiceImpl implements ProfileService {
 
   @Override
   public String sendNotificationForToken(String token, String title, String body) {
-
-    return firebaseService.sendNotificationForToken(token, title, body);
+    // Push notifications (Firebase) are not part of this OSS build -- no-op.
+    log.debug("sendNotificationForToken called but push notifications are not configured in this build");
+    return null;
   }
 
   @Override

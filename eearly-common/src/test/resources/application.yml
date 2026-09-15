@@ -61,7 +61,3 @@ sensor:
   ultrahuman:
     base-uri: https://partner.ultrahuman.com
     authorization: changeme
-
-# Service account location. Can be a filesystem path or a classpath resource. NB: Generate and use your own firebase-service-account.json file.
-firebase:
-  service-account: classpath:eearly-81b14-7704d412928d.json

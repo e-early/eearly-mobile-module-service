@@ -7,7 +7,7 @@ logging.level:
 
 logging:
   file:
-    name: ${LOGGING_FILE_PATH}
+    name: ${LOGGING_FILE_PATH:./logs/eearly-mobile.log}
   loggers:
     http:
       enabled: true
@@ -77,18 +77,14 @@ taskqueue:
 sensor:
   dexcom:
     base-uri: ${DEXCOM_BASE_URI:https://sandbox-api.dexcom.com}
-    redirect-uri: ${DEXCOM_REDIRECT_URI}
+    redirect-uri: ${DEXCOM_REDIRECT_URI:}
     client:
-      id: ${DEXCOM_CLIENT_ID}
-      secret: ${DEXCOM_CLIENT_SECRET}
+      id: ${DEXCOM_CLIENT_ID:}
+      secret: ${DEXCOM_CLIENT_SECRET:}
 
   ultrahuman:
     base-uri: https://partner.ultrahuman.com
     authorization: changeme
-
-# Service account location. Can be a filesystem path or a classpath resource. NB: Generate and use your own firebase-service-account.json file.
-firebase:
-  service-account: classpath:eearly-81b14-7704d412928d.json
 
 ehr:
   base-uri: ${EHR_BASE_URL}
