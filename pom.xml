@@ -31,7 +31,6 @@
 		<lombok.version>1.18.34</lombok.version>
 		<postgresql.version>42.7.3</postgresql.version>
 		<r3-rest-filter.version>1.0.1</r3-rest-filter.version>
-		<firebase.version>9.3.0</firebase.version>
 		<keycloak.version>25.0.4</keycloak.version>
 		<ehrbase.version>2.21.0</ehrbase.version>
 		<junit-jupiter.version>5.10.3</junit-jupiter.version>
@@ -231,12 +230,6 @@
 				<artifactId>eearly-backoffice</artifactId>
 				<version>${project.version}</version>
 			</dependency>
-			<dependency>
-				<groupId>com.google.firebase</groupId>
-				<artifactId>firebase-admin</artifactId>
-				<version>${firebase.version}</version>
-			</dependency>
-
 			<dependency>
 				<groupId>org.ehrbase.openehr.sdk</groupId>
 				<artifactId>generator</artifactId>
