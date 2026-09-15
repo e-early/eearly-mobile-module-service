@@ -91,46 +91,25 @@ Start `eearly-mobile-module-keycloak` locally (see its README) so it's reachable
 ### 3. Environment
 
 The app reads everything from environment variables (no `application-local.yaml` profile) —
-Spring does **not** auto-load `.env`, so export these before starting the JAR/`spring-boot:run`:
+Spring does **not** auto-load `.env`. Copy [`.env.example`](.env.example) to `.env`, fill in the
+placeholders (Keycloak/EHR client secrets — see the comments in that file for where to get each
+one), then:
 
 ```bash
-# Database (matches docker/docker-compose.yml)
-export DB_URL=jdbc:postgresql://localhost:5433/postgres
-export DB_USERNAME=postgres
-export DB_PASSWORD=postgres
-export DB_SCHEMA=eearly_mobile
-
-# Mobile Keycloak (this service's own users/tokens)
-export KEYCLOAK_URL=http://localhost:9091
-export KEYCLOAK_REALM=eearly-mobile
-export KEYCLOAK_ADMIN_CLIENT_ID=eearly-user-administrator
-export KEYCLOAK_ADMIN_CLIENT_SECRET=<from Keycloak Credentials tab>
-export KEYCLOAK_MOBILE_CLIENT_ID=eearly-mobile
-export KEYCLOAK_ADMIN_SERVICE_CLIENT_ID=admin-service
-
-# Patient onboarding (mobile app deep links / QR flow)
-export ONBOARDING_API_BASE_URL=http://localhost:8081
-export ONBOARDING_BASE_URL=http://localhost:8081
-export MOBILE_APP_STORE_FALLBACK_URL=https://eearly.result.si
-export MOBILE_KEYCLOAK_BASE_URL=http://localhost:9091
-export MOBILE_KEYCLOAK_HOST=localhost:9091
-
-# EHRbase (openEHR) — from eearly-ehr-module-opensource. Must be the full REST API path, not
-# just the host, AND end with a trailing slash: EhrbaseClient uses this verbatim as its
-# WebClient base URL and appends relative paths like `ehr/{id}` — without the trailing slash,
-# WebClient's URI resolution drops the last path segment (`v1`) instead of appending to it.
-export EHR_BASE_URL=http://localhost:8000/ehrbase/rest/openehr/v1/
-export EHR_KEYCLOAK_BASE_URL=http://localhost:9092
-export EHR_KEYCLOAK_CLIENT_SECRET=<from EHR Keycloak realm-config>
-
-# Dexcom sensor integration — optional (default empty), only needed if you exercise that flow
-export DEXCOM_REDIRECT_URI=http://localhost:8081/dexcom/callback
-export DEXCOM_CLIENT_ID=<sandbox client id>
-export DEXCOM_CLIENT_SECRET=<sandbox client secret>
-
-# Logging — optional, defaults to ./logs/eearly-mobile.log if unset
-export LOGGING_FILE_PATH=/tmp/eearly-mobile.log
+set -a && source .env && set +a
 ```
+
+before starting the JAR/`spring-boot:run`. Two things in there are easy to get wrong and worth
+calling out specifically:
+
+- `EHR_BASE_URL` must be the full REST API path, not just the host, **and** end with a trailing
+  slash — `EhrbaseClient` uses it verbatim as its `WebClient` base URL and appends relative paths
+  like `ehr/{id}`; without the trailing slash, URI resolution drops the last path segment (`v1`)
+  instead of appending to it.
+- `EHR_KEYCLOAK_CLIENT_SECRET` / `KEYCLOAK_ADMIN_CLIENT_SECRET`: the values checked into each
+  Keycloak repo's `realm-config` are not reliably what's actually active on a running instance —
+  fetch the real one from that Keycloak's own admin console (Clients → *client* → Credentials)
+  once it's up.
 
 | Variable | Default in code | Purpose |
 |----------|-----------------|---------|
@@ -149,13 +128,9 @@ Firebase SDK/credentials involved). The gRPC/REST methods and their proto contra
 so existing clients still work; they just won't receive a push notification.
 
 `spring.flyway.enabled` is `false` by default in `application.yml` (migrations are applied out of
-band in staging/production). For a local run, enable it so the bundled migration
-(`eearly-common/src/main/resources/db/migration/common/V1__consolidated_schema.sql`) creates the
-`DB_SCHEMA` schema and tables for you:
-
-```bash
-export SPRING_FLYWAY_ENABLED=true
-```
+band in staging/production). `.env.example` sets `SPRING_FLYWAY_ENABLED=true` for local runs so
+the bundled migration (`eearly-common/src/main/resources/db/migration/common/V1__consolidated_schema.sql`)
+creates the `DB_SCHEMA` schema and tables for you.
 
 ### 4. Generate proto / gRPC classes
 
@@ -188,7 +163,7 @@ java -jar eearly/target/eearly.jar
 
 ---
 
-## Example: push a measurement end-to-end (curl + grpcurl)
+## Example: push and read back a measurement (curl + grpcurl)
 
 This creates a user, gets a patient JWT, and writes a heart-rate + SpO₂ measurement to EHRbase —
 entirely against this service, with no admin-service involved except to obtain the one token
@@ -260,6 +235,26 @@ grpcurl -plaintext \
 ```
 
 Both calls should return `{}` on success — that's the real confirmation the write reached EHRbase.
+
+### 5. Read the measurements back
+
+Your own patient token works here too — the gRPC security config allows `admin-service` *or*
+any authenticated caller for `GetMeasurementsForUser`, not just admin. `GetMeasurements` (no
+`userId`) resolves the user from the JWT itself instead, same request shape otherwise.
+
+**Careful: this is a different timestamp format than `CreateMeasurement` used above** —
+`startDateTime`/`endDateTime` here are parsed as `OffsetDateTime`/`ZonedDateTime` (ISO-8601 with
+a zone, e.g. `...Z`), not the space-separated `yyyy-MM-dd HH:mm:ss.SSS` `measuredAt` uses.
+
+```bash
+grpcurl -plaintext \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -d "{\"userId\":\"${ONBOARDING_ID}\",\"measurementTypes\":[\"HEART_RATE\",\"OXYGEN_SATURATION\"],\"startDateTime\":\"2026-09-15T09:00:00Z\",\"endDateTime\":\"2026-09-15T11:00:00Z\",\"page\":0,\"size\":10}" \
+  localhost:8082 si.result.eearly.genproto.MeasurementService/GetMeasurementsForUser
+```
+
+The response's `measurements` array should contain the entries you pushed in step 4, matching
+`measurementTypeId`, `value`, `measuredAt`, and `measurementBatchId`.
 
 ---
 
