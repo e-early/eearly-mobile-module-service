@@ -113,7 +113,7 @@ calling out specifically:
 
 | Variable | Default in code | Purpose |
 |----------|-----------------|---------|
-| `DB_SCHEMA` | `eearly_mobile` | Postgres schema (Flyway is disabled — schema/tables must already exist or be created via the `postgres` image init, see note below) |
+| `DB_SCHEMA` | `eearly_mobile` | Postgres schema (created automatically on startup, see note below) |
 | `KEYCLOAK_REALM` | `eearly-mobile` | This service's realm |
 | `KEYCLOAK_MOBILE_CLIENT_ID` | `eearly-mobile` | Public client used by the mobile app |
 | `KEYCLOAK_ADMIN_SERVICE_CLIENT_ID` | `admin-service` | Client `eearly-admin-module-service` authenticates as |
@@ -127,10 +127,12 @@ Push notifications (Firebase) are **not included** in this OSS build — `sendNo
 Firebase SDK/credentials involved). The gRPC/REST methods and their proto contracts are unchanged,
 so existing clients still work; they just won't receive a push notification.
 
-`spring.flyway.enabled` is `false` by default in `application.yml` (migrations are applied out of
-band in staging/production). `.env.example` sets `SPRING_FLYWAY_ENABLED=true` for local runs so
-the bundled migration (`eearly-common/src/main/resources/db/migration/common/V1__consolidated_schema.sql`)
-creates the `DB_SCHEMA` schema and tables for you.
+The bundled migration (`eearly-common/src/main/resources/db/migration/common/V1__consolidated_schema.sql`)
+runs automatically on every startup via the app's own `FlywayInitializer`, which creates the
+`DB_SCHEMA` schema and tables for you if they don't already exist. This is independent of
+`spring.flyway.enabled` (`false` by default in `application.yml`) — **do not** set
+`SPRING_FLYWAY_ENABLED=true`, it only turns on Spring Boot's own Flyway autoconfiguration, which
+registers a bean with the same name as `FlywayInitializer` and crashes the app on startup.
 
 ### 4. Generate proto / gRPC classes
 
@@ -217,8 +219,7 @@ export ACCESS_TOKEN=$(jq -r '.accessToken' /tmp/config.json)
 
 One measurement type per call — mixing types in one `CreateMeasurement` call only writes the
 first type's composition. The two type ids below are seeded by this repo's own Flyway migration
-(`V1__consolidated_schema.sql`), so they exist as long as `SPRING_FLYWAY_ENABLED=true` was set on
-first run.
+(`V1__consolidated_schema.sql`), which runs automatically on first startup.
 
 ```bash
 # Heart rate
@@ -321,11 +322,6 @@ the exports in [Environment](#3-environment) above, in particular `DB_URL`, `DB_
 `EHR_KEYCLOAK_CLIENT_SECRET`, `ONBOARDING_API_BASE_URL`, `ONBOARDING_BASE_URL`,
 `MOBILE_APP_STORE_FALLBACK_URL`, `MOBILE_KEYCLOAK_BASE_URL`, `MOBILE_KEYCLOAK_HOST`.
 (`LOGGING_FILE_PATH` is the exception — it now defaults to `./logs/eearly-mobile.log` if unset.)
-
-### `relation does not exist` / schema errors
-
-Flyway is disabled by default — set `SPRING_FLYWAY_ENABLED=true` (see step 3) so the bundled
-migration creates the `DB_SCHEMA` schema and tables before the app tries to use them.
 
 ### 401 from Keycloak
 
