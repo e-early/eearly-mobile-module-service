@@ -70,15 +70,9 @@ public class MeasurementServiceImpl implements MeasurementService {
     List<Measurement> ehrMeasurements = measurementRepository.findAll(command);
     List<Measurement> apiMeasurements = apiDeviceServiceWrapper.getMeasurements(command);
 
-    Map<MeasurementKey, Measurement> mergedMeasurements = new LinkedHashMap<>();
-    for (Measurement measurement : ehrMeasurements) {
-      mergedMeasurements.put(measurement.toMeasurementKey(), measurement);
-    }
-    for (Measurement measurement : apiMeasurements) {
-      mergedMeasurements.putIfAbsent(measurement.toMeasurementKey(), measurement);
-    }
+    List<Measurement> merged = mergeDistinctApiMeasurements(ehrMeasurements, apiMeasurements);
 
-    return mergedMeasurements.values().stream()
+    return merged.stream()
         .sorted(Comparator.comparing(Measurement::measurementTime))
         .toList();
 	}
@@ -88,20 +82,37 @@ public class MeasurementServiceImpl implements MeasurementService {
     MeasurementPage ehrMeasurementPage = measurementRepository.findPage(command, 0, ehrLimit);
     List<Measurement> apiMeasurements = apiDeviceServiceWrapper.getMeasurements(command);
 
-    Map<MeasurementKey, Measurement> mergedMeasurements = new LinkedHashMap<>();
-    for (Measurement measurement : ehrMeasurementPage.measurements()) {
-      mergedMeasurements.put(measurement.toMeasurementKey(), measurement);
-    }
-    for (Measurement measurement : apiMeasurements) {
-      mergedMeasurements.putIfAbsent(measurement.toMeasurementKey(), measurement);
-    }
+    List<Measurement> merged = mergeDistinctApiMeasurements(ehrMeasurementPage.measurements(), apiMeasurements);
 
-    List<Measurement> page = mergedMeasurements.values().stream()
+    List<Measurement> page = merged.stream()
         .sorted(Comparator.comparing(Measurement::measurementTime))
         .skip(offset)
         .limit(limit)
         .toList();
 
     return new MeasurementPage(page, ehrMeasurementPage.totalElements());
+  }
+
+  /**
+   * Appends API-sourced measurements that don't already have a matching EHRbase measurement.
+   *
+   * <p>EHRbase's own rows are never deduplicated against each other here: two distinct readings
+   * can legitimately share a timestamp and value (e.g. two sensors reporting in the same second),
+   * and folding all EHRbase rows through one key map silently dropped one of every such pair.
+   */
+  private static List<Measurement> mergeDistinctApiMeasurements(List<Measurement> ehrMeasurements,
+      List<Measurement> apiMeasurements) {
+    Set<MeasurementKey> ehrKeys = new HashSet<>();
+    for (Measurement measurement : ehrMeasurements) {
+      ehrKeys.add(measurement.toMeasurementKey());
+    }
+
+    List<Measurement> merged = new ArrayList<>(ehrMeasurements);
+    for (Measurement measurement : apiMeasurements) {
+      if (ehrKeys.add(measurement.toMeasurementKey())) {
+        merged.add(measurement);
+      }
+    }
+    return merged;
   }
 }
