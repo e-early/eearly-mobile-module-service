@@ -26,6 +26,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 import org.springframework.security.web.SecurityFilterChain;
+import si.result.eearly.genproto.BackofficePatientServiceGrpc;
 import si.result.eearly.genproto.BackofficeScheduleServiceGrpc;
 import si.result.eearly.genproto.CaretakerServiceGrpc;
 import si.result.eearly.genproto.FacilityServiceGrpc;
@@ -103,6 +104,8 @@ public class WebSecurityConfiguration {
     // caller-supplied user id or manage schedules on behalf of caretakers. Patients use
     // GetMeasurements, which resolves the user from the token.
     source.set(BackofficeScheduleServiceGrpc.getServiceDescriptor(), adminServiceOnly);
+    // The admin service owns patient demographics and syncs them here for a caller-supplied user id.
+    source.set(BackofficePatientServiceGrpc.getServiceDescriptor(), adminServiceOnly);
     source.set(MeasurementServiceGrpc.getGetMeasurementsForUserMethod(), adminServiceOnly);
     // The admin service triggers these pushes when a schedule is created or a reminder is due.
     // They take a caller-supplied schedule id, so only the admin service may call them.

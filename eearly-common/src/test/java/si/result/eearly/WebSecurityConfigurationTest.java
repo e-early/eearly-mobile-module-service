@@ -22,6 +22,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.util.ReflectionTestUtils;
 import si.result.eearly.genproto.BackofficeScheduleServiceGrpc;
+import si.result.eearly.genproto.BackofficePatientServiceGrpc;
 import si.result.eearly.genproto.CaretakerServiceGrpc;
 import si.result.eearly.genproto.FacilityServiceGrpc;
 import si.result.eearly.genproto.MeasurementServiceGrpc;
@@ -108,6 +109,16 @@ class WebSecurityConfigurationTest {
     AccessPredicate createMeasurement =
         predicateFor(source, MeasurementServiceGrpc.getCreateMeasurementMethod());
     assertThat(createMeasurement.test(patient, null)).isTrue();
+  }
+
+  @Test
+  void metadataSource_restrictsPatientDemographicsSyncToAdminService() {
+    GrpcSecurityMetadataSource source = metadataSource();
+
+    var methods = BackofficePatientServiceGrpc.getServiceDescriptor().getMethods();
+    assertThat(methods).isNotEmpty();
+    methods.forEach(method -> assertAdminOnly(source, method));
+    assertAdminOnly(source, BackofficePatientServiceGrpc.getUpsertPatientDemographicsMethod());
   }
 
   @Test
