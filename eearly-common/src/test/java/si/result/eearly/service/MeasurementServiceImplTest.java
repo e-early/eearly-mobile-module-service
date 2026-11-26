@@ -53,6 +53,7 @@ class MeasurementServiceImplTest {
   private static final UUID SYSTOLIC_ID = UUID.randomUUID();
   private static final UUID DIASTOLIC_ID = UUID.randomUUID();
   private static final UUID BODY_HEIGHT_ID = UUID.randomUUID();
+  private static final UUID BODY_MASS_INDEX_ID = UUID.randomUUID();
   private static final String USER_ID = UUID.randomUUID().toString();
 
   @Mock
@@ -123,6 +124,8 @@ class MeasurementServiceImplTest {
         measurementType(DIASTOLIC_ID, MeasurementTypeEnum.BLOOD_PRESSURE,
             MeasurementSubTypeEnum.DIASTOLIC),
         measurementType(BODY_HEIGHT_ID, MeasurementTypeEnum.BODY_HEIGHT,
+            MeasurementSubTypeEnum.UNKNOWN_MEASUREMENT_SUB_TYPE),
+        measurementType(BODY_MASS_INDEX_ID, MeasurementTypeEnum.BODY_MASS_INDEX,
             MeasurementSubTypeEnum.UNKNOWN_MEASUREMENT_SUB_TYPE)));
     return new MeasurementServiceImpl(measurementRepository, measurementTypeRepository,
         deviceRepository, mappers, apiDeviceServiceWrapper);
@@ -222,6 +225,22 @@ class MeasurementServiceImplTest {
     assertThat(handedTo("HEART_RATE")).extracting(CreateMeasurementCommand::value)
         .containsExactly(80.0);
     verify(mappers.get("OXYGEN_SATURATION"), never()).marshallMeasurements(any(), any(), any());
+    verify(measurementRepository, times(1)).create(anyString(), any());
+  }
+
+  @Test
+  @DisplayName("addBatchMeasurements skips a body composition type that has no mapper without failing")
+  void skipsBodyCompositionTypeWithoutMapper() {
+    MeasurementServiceImpl service = batchService();
+    String batchId = UUID.randomUUID().toString();
+
+    service.addBatchMeasurements(List.of(
+        command(BODY_MASS_INDEX_ID, 24.5, batchId),
+        command(HEART_RATE_ID, 80.0, batchId)));
+
+    assertThat(mappers).doesNotContainKey("BODY_MASS_INDEX");
+    assertThat(handedTo("HEART_RATE")).extracting(CreateMeasurementCommand::value)
+        .containsExactly(80.0);
     verify(measurementRepository, times(1)).create(anyString(), any());
   }
 }
