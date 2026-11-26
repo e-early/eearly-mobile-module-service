@@ -8,6 +8,7 @@ import io.grpc.Status;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import org.springframework.security.access.AccessDeniedException;
 import si.result.eearly.domain.exception.DeviceUserAlreadyExistsException;
 import si.result.eearly.domain.exception.NotFoundException;
 
@@ -103,5 +104,18 @@ class GlobalExceptionHandlerInterceptorTest {
     // Assert
     verify(serverCall).close(statusCaptor.capture(), any(Metadata.class));
     assertEquals(Status.INTERNAL.getCode(), statusCaptor.getValue().getCode());
+  }
+
+  @Test
+  void interceptCall_ShouldMapAccessDeniedToPermissionDenied() {
+    doThrow(new AccessDeniedException("No user in the access token")).when(mockListener).onHalfClose();
+
+    ServerCall.Listener<Object> listener = interceptor.interceptCall(serverCall, metadata, serverCallHandler);
+    listener.onHalfClose();
+
+    verify(serverCall).close(statusCaptor.capture(), any(Metadata.class));
+    assertEquals(Status.PERMISSION_DENIED.getCode(), statusCaptor.getValue().getCode());
+    // The internal reason stays in the server log; the client only learns that access was denied.
+    assertEquals("Access denied", statusCaptor.getValue().getDescription());
   }
 }

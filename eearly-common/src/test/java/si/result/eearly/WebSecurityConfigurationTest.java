@@ -22,7 +22,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.util.ReflectionTestUtils;
 import si.result.eearly.genproto.BackofficeScheduleServiceGrpc;
+import si.result.eearly.genproto.CaretakerServiceGrpc;
+import si.result.eearly.genproto.FacilityServiceGrpc;
 import si.result.eearly.genproto.MeasurementServiceGrpc;
+import si.result.eearly.genproto.ProfileServiceGrpc;
 import si.result.eearly.genproto.ScheduleServiceGrpc;
 
 class WebSecurityConfigurationTest {
@@ -108,13 +111,49 @@ class WebSecurityConfigurationTest {
   }
 
   @Test
-  void metadataSource_leavesScheduleNotificationRpcUnchanged() {
+  void metadataSource_restrictsSchedulePushTriggersToAdminService() {
+    GrpcSecurityMetadataSource source = metadataSource();
+
+    assertAdminOnly(source, ScheduleServiceGrpc.getSendScheduleNotificationMethod());
+    assertAdminOnly(source, ScheduleServiceGrpc.getSendMeasurementReminderMethod());
+  }
+
+  @Test
+  void metadataSource_keepsScheduleReadsOpenToPatients() {
     GrpcSecurityMetadataSource source = metadataSource();
     Authentication patient = jwtAuth(Map.of("azp", PATIENT_CLIENT_ID));
 
-    AccessPredicate sendNotification =
-        predicateFor(source, ScheduleServiceGrpc.getSendScheduleNotificationMethod());
-    assertThat(sendNotification.test(patient, null)).isTrue();
+    // The facade limits the results to the caller's own schedules.
+    assertThat(predicateFor(source, ScheduleServiceGrpc.getGetSchedulesMethod())
+        .test(patient, null)).isTrue();
+    assertThat(predicateFor(source, ScheduleServiceGrpc.getGetScheduleEntriesMethod())
+        .test(patient, null)).isTrue();
+  }
+
+  @Test
+  void metadataSource_restrictsRecordAndPushRpcsToAdminService() {
+    GrpcSecurityMetadataSource source = metadataSource();
+
+    List.of(
+        ProfileServiceGrpc.getSendFCMNotificationForTokenMethod(),
+        CaretakerServiceGrpc.getUpsertCaretakerMethod(),
+        FacilityServiceGrpc.getUpsertFacilityMethod())
+        .forEach(method -> assertAdminOnly(source, method));
+  }
+
+  @Test
+  void metadataSource_keepsReadAndOwnProfileRpcsOpenToPatients() {
+    GrpcSecurityMetadataSource source = metadataSource();
+    Authentication patient = jwtAuth(Map.of("azp", PATIENT_CLIENT_ID));
+
+    List.of(
+        CaretakerServiceGrpc.getGetCaretakerMethod(),
+        FacilityServiceGrpc.getGetFacilitiesMethod(),
+        ProfileServiceGrpc.getGetProfileMethod(),
+        ProfileServiceGrpc.getUpsertProfileMethod(),
+        ProfileServiceGrpc.getUpdateUsernameMethod())
+        .forEach(method -> assertThat(predicateFor(source, method).test(patient, null))
+            .as(method.getFullMethodName()).isTrue());
   }
 
   private GrpcSecurityMetadataSource metadataSource() {
