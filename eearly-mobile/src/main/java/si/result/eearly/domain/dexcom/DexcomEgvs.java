@@ -74,7 +74,8 @@ public class DexcomEgvs {
           getValue().doubleValue(),
           UUID.randomUUID(),
           measuredAt.toZonedDateTime(),
-          deviceUser.getDevice().getId()
+          deviceUser.getDevice().getId(),
+          null
       );
 			return measurement;
 		}

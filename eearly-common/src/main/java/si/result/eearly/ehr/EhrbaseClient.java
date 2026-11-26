@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import java.time.ZonedDateTime;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -103,6 +105,7 @@ public class EhrbaseClient {
     }
 
     int totalPages = (int) Math.ceil((double) totalCount / fetch);
+    final Map<UUID, String> comments = fetchComments(token, command);
 
     return Flux.range(0, totalPages)
         .flatMap(pageIndex -> {
@@ -118,7 +121,8 @@ public class EhrbaseClient {
                 }
                 return Flux.fromIterable(resp.get("rows"));
               })
-              .map(row -> convertRowToMeasurement(row, command));
+              .filter(EhrbaseClient::isMeasurementRow)
+              .map(row -> convertRowToMeasurement(row, command, comments));
 
         }, parallelism)
         .collectList()
@@ -158,8 +162,10 @@ public class EhrbaseClient {
       return new MeasurementPage(Collections.emptyList(), totalCount);
     }
 
+    Map<UUID, String> comments = fetchComments(token, command);
     List<Measurement> measurements = Flux.fromIterable(response.get("rows"))
-        .map(row -> convertRowToMeasurement(row, command))
+        .filter(EhrbaseClient::isMeasurementRow)
+        .map(row -> convertRowToMeasurement(row, command, comments))
         .collectList()
         .block();
 
@@ -167,7 +173,20 @@ public class EhrbaseClient {
         totalCount);
   }
 
-  private String buildQuery(GetMeasurementsCommand command) {
+  /**
+   * Name of the data item that holds a batch's comment. It is a sibling item next to the
+   * reading's own magnitude (same event, different ITEM_TREE item), not an attribute of it.
+   */
+  private static final String COMMENT_ITEM_NAME = "Comment";
+
+  /**
+   * The comment item is excluded here rather than folded into these rows: it comes back as an
+   * extra, magnitude-less row per commented reading, which would otherwise be converted into a
+   * bogus 0.0 reading. The exclusion also keeps the paging offsets and {@link #buildCountQuery}'s
+   * count in agreement with the rows actually returned. {@link #isMeasurementRow} additionally
+   * filters any other value-less row in Java.
+   */
+  String buildQuery(GetMeasurementsCommand command) {
     return """
         SELECT
             obs/archetype_node_id AS measurement_type,
@@ -181,10 +200,10 @@ public class EhrbaseClient {
         CONTAINS COMPOSITION c
         CONTAINS OBSERVATION obs
         WHERE %s
-        """.formatted(buildWhereClause(command));
+        """.formatted(excludeCommentItem(buildWhereClause(command)));
   }
 
-  private String buildCountQuery(GetMeasurementsCommand command) {
+  String buildCountQuery(GetMeasurementsCommand command) {
 
     return """
         SELECT COUNT(obs/data/events/data/items/value/magnitude) AS total_count
@@ -192,7 +211,49 @@ public class EhrbaseClient {
         CONTAINS COMPOSITION c
         CONTAINS OBSERVATION obs
         WHERE %s
-        """.formatted(buildWhereClause(command));
+        """.formatted(excludeCommentItem(buildWhereClause(command)));
+  }
+
+  /**
+   * A batch's comment, keyed by batch id. It is a separate query from {@link #buildQuery} because
+   * the comment is a different item from the magnitude and would otherwise come back as its own
+   * row. Merging by batch id works regardless of how many readings share one comment.
+   */
+  String buildCommentQuery(GetMeasurementsCommand command) {
+    return """
+        SELECT
+            c/uid/value AS batch_id,
+            obs/data/events/data/items/value/value AS comment_value
+        FROM EHR e
+        CONTAINS COMPOSITION c
+        CONTAINS OBSERVATION obs
+        WHERE %s AND obs/data/events/data/items/name/value = '%s'
+        """.formatted(buildWhereClause(command), COMMENT_ITEM_NAME);
+  }
+
+  private static String excludeCommentItem(String whereClause) {
+    return whereClause + " AND obs/data/events/data/items/name/value != '" + COMMENT_ITEM_NAME + "'";
+  }
+
+  /**
+   * At most one distinct comment is attached per batch, so a single unpaginated fetch covers every
+   * commented batch a query could return.
+   */
+  private Map<UUID, String> fetchComments(String token, GetMeasurementsCommand command) {
+    JsonNode response = executeAql(token, buildCommentQuery(command), 5000, 0).block();
+    if (response == null || !response.has("rows") || response.get("rows").isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    Map<UUID, String> comments = new HashMap<>();
+    for (JsonNode row : response.get("rows")) {
+      UUID batchId = parseBatchId(row.get(0).asText());
+      JsonNode commentValue = row.get(1);
+      if (batchId != null && commentValue != null && !commentValue.isNull()) {
+        comments.put(batchId, commentValue.asText());
+      }
+    }
+    return comments;
   }
 
   private String buildWhereClause(GetMeasurementsCommand command) {
@@ -237,13 +298,27 @@ public class EhrbaseClient {
         .bodyToMono(JsonNode.class);
   }
 
-  private Measurement convertRowToMeasurement(JsonNode row, GetMeasurementsCommand command) {
-    UUID batchId = null;
+  /**
+   * The query projects every item of the event data, so an item without a numeric value (such as
+   * a text comment) comes back as its own row. It is not a measurement.
+   */
+  static boolean isMeasurementRow(JsonNode row) {
+    JsonNode magnitude = row.get(3);
+    return magnitude != null && !magnitude.isNull();
+  }
+
+  private static UUID parseBatchId(String raw) {
     try {
-      batchId = UUID.fromString(row.get(4).asText().split("::")[0]);
+      return UUID.fromString(raw.split("::")[0]);
     } catch (Exception e) {
-      log.debug("could not parse batch id: {}", row.get(4).asText());
+      log.debug("could not parse batch id: {}", raw);
+      return null;
     }
+  }
+
+  Measurement convertRowToMeasurement(JsonNode row, GetMeasurementsCommand command,
+      Map<UUID, String> comments) {
+    UUID batchId = parseBatchId(row.get(4).asText());
 
     String archetypeId = row.get(0).asText();
 
@@ -275,7 +350,8 @@ public class EhrbaseClient {
         row.get(3).asDouble(),
         batchId,
         ZonedDateTime.parse(row.get(5).asText()),
-        deviceId
+        deviceId,
+        batchId != null ? comments.get(batchId) : null
     );
   }
 

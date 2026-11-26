@@ -98,7 +98,7 @@ class MeasurementServiceImplTest {
 
   private static Measurement heartRateAt(UUID ehrId, OffsetDateTime measuredAt, double bpm) {
     return new Measurement(ehrId, "openEHR-EHR-OBSERVATION.pulse.v2", HEART_RATE_ID, "/min", bpm,
-        UUID.randomUUID(), measuredAt.atZoneSameInstant(ZoneOffset.UTC), null);
+        UUID.randomUUID(), measuredAt.atZoneSameInstant(ZoneOffset.UTC), null, null);
   }
 
   // --- addBatchMeasurements: one composition per (batch, measurement type) ---
