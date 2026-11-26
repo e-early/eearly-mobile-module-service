@@ -1,20 +1,11 @@
+# INFO by default: DEBUG output contains token claims and request bodies (personal and health
+# data). Verbose levels live in application-development.yml.
 logging.level:
-  si.result.eearly: DEBUG
-  org.springframework:
-    web.client.RestTemplate: DEBUG
-    security: DEBUG
-    cache: TRACE
+  root: INFO
 
 logging:
   file:
     name: ${LOGGING_FILE_PATH:./logs/eearly-mobile.log}
-  loggers:
-    http:
-      enabled: true
-      log-response: true
-      log-authorization-header: false
-    method:
-      enabled: true
 
 server:
   port: 8081
