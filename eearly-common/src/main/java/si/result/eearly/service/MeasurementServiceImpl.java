@@ -28,43 +28,81 @@ public class MeasurementServiceImpl implements MeasurementService {
   private final Map<String, EhrMapper> ehrMappers;
   private final ApiDeviceServiceWrapper apiDeviceServiceWrapper;
 
-	@Override
-	public void addBatchMeasurements(List<CreateMeasurementCommand> commands) {
-    Map<String, List<CreateMeasurementCommand>> groupedBatchMeasurementCommands = new HashMap<>();
-
-    for (CreateMeasurementCommand command : commands) {
-      String batchId = command.measurementBatchId();
-      var currentMeasurementsForBatch = groupedBatchMeasurementCommands.get(batchId);
-      if (currentMeasurementsForBatch == null) {
-        groupedBatchMeasurementCommands.put(batchId, new ArrayList<>(List.of(command)));
-      } else {
-        groupedBatchMeasurementCommands.get(batchId).add(command);
-      }
-    }
-
+  /**
+   * Writes one EHR composition per (batch, measurement type).
+   *
+   * <p>A single batch can carry more than one measurement type (for example a device reporting
+   * heart rate and oxygen saturation from one reading). Each type must reach the mapper that
+   * understands it, so grouping by batch id alone is not enough: the whole batch would be handed
+   * to the mapper of whichever measurement came first.
+   *
+   * <p>Grouping uses the resolved measurement <em>type</em> and not the measurement type id:
+   * systolic and diastolic blood pressure are separate type ids that share the
+   * {@code BLOOD_PRESSURE} type, and its mapper needs both to build a single composition.
+   *
+   * <p>Measurements whose type is unknown, or for which no mapper is registered, are skipped and
+   * logged at ERROR level (batch id, type and count only) without failing the rest of the batch.
+   */
+  @Override
+  public void addBatchMeasurements(List<CreateMeasurementCommand> commands) {
     List<MeasurementType> measurementTypeList = measurementTypeRepository.findAll();
 
-    groupedBatchMeasurementCommands.forEach((ignored, measurements) -> {
-      String measurementTypeId = measurements.getFirst().measurementTypeId();
+    Map<BatchTypeKey, List<CreateMeasurementCommand>> groupedBatchMeasurementCommands =
+        new LinkedHashMap<>();
+    Map<BatchTypeKey, Integer> unknownTypeCounts = new LinkedHashMap<>();
+
+    for (CreateMeasurementCommand command : commands) {
+      Optional<MeasurementType> measurementType =
+          findMeasurementType(measurementTypeList, command.measurementTypeId());
+      if (measurementType.isEmpty()) {
+        unknownTypeCounts.merge(
+            new BatchTypeKey(command.measurementBatchId(), "type id " + command.measurementTypeId()),
+            1, Integer::sum);
+        continue;
+      }
+
+      BatchTypeKey key = new BatchTypeKey(command.measurementBatchId(),
+          measurementType.get().getMeasurementType().toString());
+      groupedBatchMeasurementCommands.computeIfAbsent(key, ignored -> new ArrayList<>())
+          .add(command);
+    }
+
+    unknownTypeCounts.forEach((key, count) ->
+        log.error("Could not determine measurement type for batch {} ({}), skipping {} measurement(s)",
+            key.batchId(), key.measurementType(), count));
+
+    groupedBatchMeasurementCommands.forEach((key, measurements) -> {
+      EhrMapper ehrMapper = ehrMappers.get(key.measurementType());
+      if (ehrMapper == null) {
+        log.error("No EHR mapper registered for measurement type {} in batch {}, skipping {} measurement(s)",
+            key.measurementType(), key.batchId(), measurements.size());
+        return;
+      }
+
       String deviceId = measurements.getFirst().deviceId();
       EhrMedicalDevice medicalDevice = null;
-      if(!deviceId.isEmpty()) {
+      if (deviceId != null && !deviceId.isEmpty()) {
         var device = deviceRepository.findById(UUID.fromString(deviceId));
-        if(device.isPresent()) {
+        if (device.isPresent()) {
           medicalDevice = new EhrMedicalDevice(deviceId, device.get().getName());
         }
       }
 
-      Optional<MeasurementType> measurementType = measurementTypeList.stream().filter(type -> type.getId().toString().equals(measurementTypeId)).findFirst();
-      if(measurementType.isEmpty()) {
-        log.error("Could not determine measurement type with id {}, skipping batch measurement", measurementTypeId);
-        return;
-      }
-      EhrMapper ehrMapper = ehrMappers.get(measurementType.get().getMeasurementType().toString());
       String marshalledComposition = ehrMapper.marshallMeasurements(measurements, medicalDevice, measurementTypeList);
       measurementRepository.create(marshalledComposition, UUID.fromString(commands.getFirst().userId()));
     });
-	}
+  }
+
+  private static Optional<MeasurementType> findMeasurementType(List<MeasurementType> measurementTypes,
+      String measurementTypeId) {
+    return measurementTypes.stream()
+        .filter(type -> type.getId().toString().equals(measurementTypeId))
+        .findFirst();
+  }
+
+  /** Identifies one composition: a batch and the measurement type written in it. */
+  private record BatchTypeKey(String batchId, String measurementType) {
+  }
 
 	public List<Measurement> getMeasurementList(GetMeasurementsCommand command) {
     List<Measurement> ehrMeasurements = measurementRepository.findAll(command);
