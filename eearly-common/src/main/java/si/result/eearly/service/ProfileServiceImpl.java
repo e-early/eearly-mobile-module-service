@@ -6,10 +6,13 @@ import org.springframework.stereotype.Service;
 import si.result.eearly.domain.exception.ErrorCode;
 import si.result.eearly.domain.exception.ValidationException;
 import si.result.eearly.domain.profile.Profile;
+import si.result.eearly.domain.profile.UpsertDemographicsCommand;
 import si.result.eearly.domain.profile.UpsertProfileCommand;
 import si.result.eearly.ehr.EhrbaseClient;
 import si.result.eearly.repository.ProfileRepository;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
@@ -22,6 +25,7 @@ public class ProfileServiceImpl implements ProfileService {
 
   private final ProfileRepository profileRepository;
   private final EhrbaseClient ehrbaseClient;
+  private final Clock clock;
 
   @Override
   public Profile upsertProfile(UpsertProfileCommand command) throws ValidationException {
@@ -65,6 +69,25 @@ public class ProfileServiceImpl implements ProfileService {
   public Profile getProfile(String id) throws ValidationException{
     return profileRepository.findById(UUID.fromString(id)).orElseThrow(() -> new ValidationException(
             ErrorCode.INTERNAL_ERROR, String.format("User profile with id %s does not exist", id)));
+  }
+
+  /**
+   * Creates the profile when the admin service syncs a patient that has not opened the app yet;
+   * the app's own UpsertProfile later fills in the rest without touching these fields.
+   * Date of birth and sex are personal data and are never logged.
+   */
+  @Override
+  public Profile upsertDemographics(UpsertDemographicsCommand command) throws ValidationException {
+    if (command.dateOfBirth() != null && !command.dateOfBirth().isBefore(LocalDate.now(clock))) {
+      throw new ValidationException(ErrorCode.VALIDATION_ERROR, "dateOfBirth must be in the past");
+    }
+
+    UUID userId = UUID.fromString(command.userId());
+    Profile profile = profileRepository.findById(userId)
+        .orElseGet(() -> Profile.createProfileFromId(command.userId()));
+    profile.setDateOfBirth(command.dateOfBirth());
+    profile.setSex(command.sex());
+    return profileRepository.save(profile);
   }
 
   void validateProfileUpsert(UpsertProfileCommand command) throws ValidationException {
