@@ -12,7 +12,8 @@ public record Measurement(
     Double magnitude,
     UUID batchId,
     ZonedDateTime measurementTime,
-    UUID deviceId
+    UUID deviceId,
+    String comment
 ) {
 
   public MeasurementKey toMeasurementKey() {
