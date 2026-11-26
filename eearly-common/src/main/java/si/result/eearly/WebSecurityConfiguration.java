@@ -16,7 +16,6 @@ import org.springframework.security.access.vote.UnanimousBased;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -94,31 +93,31 @@ public class WebSecurityConfiguration {
   public GrpcSecurityMetadataSource grpcSecurityMetadataSource() {
     final ManualGrpcSecurityMetadataSource source = new ManualGrpcSecurityMetadataSource();
 
-    AccessPredicate adminServiceOrAuthenticated = (Authentication authentication, ServerCall<?, ?> call) -> {
+    AccessPredicate adminServiceOnly = adminServiceOnly(adminServiceClientId);
 
-      if (authentication == null || !authentication.isAuthenticated()) {
-        return false;
-      }
+    // Only the admin service (client credentials) may call these RPCs: they take a
+    // caller-supplied user id or manage schedules on behalf of caretakers. Patients use
+    // GetMeasurements, which resolves the user from the token.
+    source.set(BackofficeScheduleServiceGrpc.getServiceDescriptor(), adminServiceOnly);
+    source.set(MeasurementServiceGrpc.getGetMeasurementsForUserMethod(), adminServiceOnly);
 
-      if (authentication instanceof AnonymousAuthenticationToken) {
-        return false;
-      }
-
-      Object principal = authentication.getPrincipal();
-      if (principal instanceof Jwt jwt) {
-        String clientId = jwt.getClaim("client_id");
-        if (adminServiceClientId != null && adminServiceClientId.equals(clientId)) {
-          return true;
-        }
-      }
-      
-      return true;
-    };
-
-    source.set(BackofficeScheduleServiceGrpc.getServiceDescriptor(), adminServiceOrAuthenticated);
-    source.set(MeasurementServiceGrpc.getGetMeasurementsForUserMethod(), adminServiceOrAuthenticated);
-    
     return source.setDefault(AccessPredicate.authenticated());
+  }
+
+  static AccessPredicate adminServiceOnly(String adminServiceClientId) {
+    return (Authentication authentication, ServerCall<?, ?> call) -> {
+      if (authentication == null || !authentication.isAuthenticated()
+          || authentication instanceof AnonymousAuthenticationToken) {
+        return false;
+      }
+
+      if (adminServiceClientId == null || adminServiceClientId.isBlank()) {
+        return false;
+      }
+
+      return authentication.getPrincipal() instanceof Jwt jwt
+          && adminServiceClientId.equals(jwt.getClaimAsString("client_id"));
+    };
   }
 
   // https://github.com/grpc-ecosystem/grpc-spring/issues/1068
