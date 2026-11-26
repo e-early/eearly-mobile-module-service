@@ -85,6 +85,16 @@ ehr:
     client-id: ${EHR_KEYCLOAK_CLIENT_ID:ehrbase}
     client-secret: ${EHR_KEYCLOAK_CLIENT_SECRET}
 
+# The admin service's internal API, for what the patient changes in the app (their language).
+# Left blank, nothing is sent and the admin service keeps its own value.
+admin-service:
+  base-url: ${ADMIN_SERVICE_URL:}
+  keycloak:
+    base-url: ${ADMIN_KEYCLOAK_BASE_URL:}
+    realm: ${ADMIN_KEYCLOAK_REALM:eearly-admin}
+    client-id: ${ADMIN_KEYCLOAK_CLIENT_ID:eearly-mobile-service}
+    client-secret: ${ADMIN_KEYCLOAK_CLIENT_SECRET:}
+
 onboarding:
   api_base_url: ${ONBOARDING_API_BASE_URL}
   app:

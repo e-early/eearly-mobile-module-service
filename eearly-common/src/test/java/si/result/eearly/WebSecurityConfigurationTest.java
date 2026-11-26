@@ -162,7 +162,8 @@ class WebSecurityConfigurationTest {
         FacilityServiceGrpc.getGetFacilitiesMethod(),
         ProfileServiceGrpc.getGetProfileMethod(),
         ProfileServiceGrpc.getUpsertProfileMethod(),
-        ProfileServiceGrpc.getUpdateUsernameMethod())
+        ProfileServiceGrpc.getUpdateUsernameMethod(),
+        ProfileServiceGrpc.getUpdateLanguageMethod())
         .forEach(method -> assertThat(predicateFor(source, method).test(patient, null))
             .as(method.getFullMethodName()).isTrue());
   }

@@ -55,6 +55,14 @@ public class Profile {
     @Enumerated(EnumType.STRING)
     private Sex sex;
 
+    /**
+     * ISO 639-1 language of the app and push notifications ({@link ProfileLanguage}). Synced from
+     * the admin service, or changed by the patient in the app (UpdateLanguage). Deliberately not in
+     * {@link #apply}, so UpsertProfile never resets it.
+     */
+    @Column(name = "language", length = 3, nullable = false)
+    private String language = ProfileLanguage.DEFAULT;
+
     @OneToMany(mappedBy = "primaryKey.profile")
     @EqualsAndHashCode.Exclude
     private List<DeviceUser> deviceUserList;

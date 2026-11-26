@@ -13,6 +13,9 @@ service ProfileService {
   rpc SendFCMNotificationForToken (SendFCMNotificationForTokenRequest) returns (SendFCMNotificationForTokenResponse) {}
   rpc UpdateUsername (UpdateUsernameRequest) returns (UpdateUsernameResponse) {}
   rpc GetProfile (GetProfileRequest) returns (GetProfileResponse) {}
+  // The language the patient picked in the app; also sent on to the admin service (emails).
+  // Separate from UpsertProfile, which sends the whole profile on every change.
+  rpc UpdateLanguage (UpdateLanguageRequest) returns (UpdateLanguageResponse) {}
 }
 
 
@@ -26,6 +29,8 @@ message Profile {
   int32 notificationMeasurementDueMinutes = 7;
   bool notificationNoInternet = 8;
   bool notificationNoBluetooth = 9;
+  // Field numbers 10 and 11 are used by features this build does not include.
+  string language = 12; // ISO 639-1 code of the app and push notifications ("sl", "en")
 }
 message GetProfileRequest {}
 
@@ -70,4 +75,13 @@ message UpdateUsernameRequest {
 
 message UpdateUsernameResponse {
   Error error = 1;
+}
+
+message UpdateLanguageRequest {
+  string language = 1; // ISO 639-1 code: "sl" or "en"
+}
+
+message UpdateLanguageResponse {
+  string language = 1; // The language now saved
+  Error error = 2;
 }

@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import si.result.eearly.domain.enums.Sex;
 import si.result.eearly.domain.exception.ErrorCode;
 import si.result.eearly.domain.exception.ValidationException;
+import si.result.eearly.domain.profile.ProfileLanguage;
 import si.result.eearly.domain.profile.UpsertDemographicsCommand;
 import si.result.eearly.exception.ServiceInvalidRequestException;
 import si.result.eearly.genproto.UpsertPatientDemographicsRequest;
@@ -38,10 +39,6 @@ public class BackofficePatientServiceGrpcFacade {
     return UpsertPatientDemographicsResponse.newBuilder().build();
   }
 
-  /**
-   * The request's language field is accepted for wire compatibility but not used: this build does
-   * not keep a per-patient language.
-   */
   static UpsertDemographicsCommand toCommand(UpsertPatientDemographicsRequest request)
       throws ValidationException {
     try {
@@ -68,6 +65,16 @@ public class BackofficePatientServiceGrpcFacade {
       case UNKNOWN_SEX, UNRECOGNIZED -> null;
     };
 
-    return new UpsertDemographicsCommand(request.getUserId(), dateOfBirth, sex);
+    // Empty: an admin service that does not send the language, so keep the profile's language.
+    String language = null;
+    if (!request.getLanguage().isEmpty()) {
+      if (!ProfileLanguage.isSupported(request.getLanguage())) {
+        throw new ValidationException(ErrorCode.VALIDATION_ERROR,
+            "language must be one of " + ProfileLanguage.SUPPORTED);
+      }
+      language = request.getLanguage();
+    }
+
+    return new UpsertDemographicsCommand(request.getUserId(), dateOfBirth, sex, language);
   }
 }

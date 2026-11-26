@@ -11,4 +11,5 @@ public interface ProfileService {
   String sendNotificationForToken(String token, String title, String body);
   Profile getProfile(String id) throws ValidationException;
   Profile upsertDemographics(UpsertDemographicsCommand command) throws ValidationException;
+  Profile updateLanguage(String userId, String language) throws ValidationException;
 }

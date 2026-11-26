@@ -67,6 +67,27 @@ class ProfileDemographicsMigrationIntegrationTest {
   }
 
   @Test
+  void languageColumnIsRequiredAndDefaultsToSlovenian() {
+    List<Map<String, Object>> columns = jdbc.queryForList("""
+        select data_type, character_maximum_length, is_nullable, column_default
+        from information_schema.columns
+        where table_schema = 'eearly_mobile' and table_name = 'profile'
+          and column_name = 'language'
+        """);
+
+    assertThat(columns).hasSize(1);
+    assertThat(columns.get(0)).containsEntry("data_type", "character varying")
+        .containsEntry("character_maximum_length", 3)
+        .containsEntry("is_nullable", "NO");
+    assertThat(String.valueOf(columns.get(0).get("column_default"))).contains("'sl'");
+
+    UUID userId = UUID.randomUUID();
+    profileRepository.saveAndFlush(Profile.createProfileFromId(userId.toString()));
+    entityManager.clear();
+    assertThat(profileRepository.findById(userId).orElseThrow().getLanguage()).isEqualTo("sl");
+  }
+
+  @Test
   void profileDemographicsRoundTrip() {
     UUID userId = UUID.randomUUID();
     Profile profile = Profile.createProfileFromId(userId.toString());
