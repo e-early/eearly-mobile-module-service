@@ -15,11 +15,9 @@ import si.result.eearly.mapper.BackofficeScheduleMapper;
 import si.result.eearly.service.ScheduleEntryService;
 import si.result.eearly.service.BackofficeScheduleService;
 import si.result.eearly.service.UserPrincipalService;
-import si.result.r3.filter.config.RestFilterGenerator;
 import si.result.eearly.repository.MeasurementTypeRepository;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,8 +30,6 @@ public class BackofficeScheduleServiceGrpcFacade {
   private final ScheduleEntryService scheduleEntryService;
   private final BackofficeScheduleMapper scheduleMapper;
   private final MeasurementTypeRepository measurementTypeRepository;
-
-  RestFilterGenerator restFilterGenerator = new RestFilterGenerator(new HashMap<>());
 
   @Transactional
   public UpsertScheduleResponse upsertSchedule (UpsertScheduleRequest request) {
@@ -107,7 +103,7 @@ public class BackofficeScheduleServiceGrpcFacade {
 
   @Transactional(readOnly = true)
   public GetSchedulesResponse getSchedulesForCaretaker(String filter) {
-    Specification<Schedule> specification = restFilterGenerator.parse(filter).toSpecification(Schedule.class);
+    Specification<Schedule> specification = ScheduleFilters.toSpecification(filter, Schedule.class);
     Specification<Schedule> specificationUserId = (root, query, criteriaBuilder) -> {
       return criteriaBuilder.equal(root.get("caretakerId"), UUID.fromString(userPrincipalService.getUserPrincipal().getId()));
     };
@@ -124,7 +120,7 @@ public class BackofficeScheduleServiceGrpcFacade {
 
   @Transactional(readOnly = true)
   public GetScheduleEntriesResponse getScheduleEntriesForCaretaker(String scheduleId, String filter) {
-    Specification<ScheduleEntry> specification = restFilterGenerator.parse(filter).toSpecification(ScheduleEntry.class);
+    Specification<ScheduleEntry> specification = ScheduleFilters.toSpecification(filter, ScheduleEntry.class);
     Specification<ScheduleEntry> specificationUserId = (root, query, criteriaBuilder) -> {
       Join<ScheduleEntry, Schedule> scheduleJoin = root.join("schedules", JoinType.INNER);
       criteriaBuilder.equal(scheduleJoin.get("caretakerId"), UUID.fromString(userPrincipalService.getUserPrincipal().getId()));

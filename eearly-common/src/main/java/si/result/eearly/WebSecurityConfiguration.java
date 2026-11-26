@@ -27,7 +27,11 @@ import org.springframework.security.oauth2.server.resource.authentication.Bearer
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 import org.springframework.security.web.SecurityFilterChain;
 import si.result.eearly.genproto.BackofficeScheduleServiceGrpc;
+import si.result.eearly.genproto.CaretakerServiceGrpc;
+import si.result.eearly.genproto.FacilityServiceGrpc;
 import si.result.eearly.genproto.MeasurementServiceGrpc;
+import si.result.eearly.genproto.ProfileServiceGrpc;
+import si.result.eearly.genproto.ScheduleServiceGrpc;
 import io.grpc.ServerCall;
 
 import java.util.ArrayList;
@@ -100,6 +104,15 @@ public class WebSecurityConfiguration {
     // GetMeasurements, which resolves the user from the token.
     source.set(BackofficeScheduleServiceGrpc.getServiceDescriptor(), adminServiceOnly);
     source.set(MeasurementServiceGrpc.getGetMeasurementsForUserMethod(), adminServiceOnly);
+    // The admin service triggers these pushes when a schedule is created or a reminder is due.
+    // They take a caller-supplied schedule id, so only the admin service may call them.
+    source.set(ScheduleServiceGrpc.getSendScheduleNotificationMethod(), adminServiceOnly);
+    source.set(ScheduleServiceGrpc.getSendMeasurementReminderMethod(), adminServiceOnly);
+    // These act on caller-supplied devices or records. Only the admin service may call them
+    // (it syncs caretakers and facilities).
+    source.set(ProfileServiceGrpc.getSendFCMNotificationForTokenMethod(), adminServiceOnly);
+    source.set(CaretakerServiceGrpc.getUpsertCaretakerMethod(), adminServiceOnly);
+    source.set(FacilityServiceGrpc.getUpsertFacilityMethod(), adminServiceOnly);
 
     return source.setDefault(AccessPredicate.authenticated());
   }
