@@ -22,6 +22,9 @@ public class EhrbaseMeasurementName {
       case "openEHR-EHR-OBSERVATION.height" -> measurementTypes.stream().filter(mt -> mt.getMeasurementType() == MeasurementTypeEnum.BODY_HEIGHT).findFirst().get();
       case "openEHR-EHR-OBSERVATION.body_weight" -> measurementTypes.stream().filter(mt -> mt.getMeasurementType() == MeasurementTypeEnum.BODY_WEIGHT).findFirst().get();
       case "openEHR-EHR-OBSERVATION.body_temperature" -> measurementTypes.stream().filter(mt -> mt.getMeasurementType() == MeasurementTypeEnum.BODY_TEMPERATURE).findFirst().get();
+      case "openEHR-EHR-OBSERVATION.eearly_heart_rate_variability" -> measurementTypes.stream().filter(mt -> mt.getMeasurementType() == MeasurementTypeEnum.HEART_RATE_VARIABILITY).findFirst().get();
+      case "openEHR-EHR-OBSERVATION.eearly_stress_level" -> measurementTypes.stream().filter(mt -> mt.getMeasurementType() == MeasurementTypeEnum.STRESS_LEVEL).findFirst().get();
+      case "openEHR-EHR-OBSERVATION.eearly_glucose_variability" -> measurementTypes.stream().filter(mt -> mt.getMeasurementType() == MeasurementTypeEnum.GLUCOSE_VARIABILITY).findFirst().get();
       default -> throw new IllegalStateException("Could not get measurement type id for archetype: " + archetypeId);
     };
   }
