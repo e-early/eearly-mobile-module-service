@@ -239,9 +239,11 @@ Both calls should return `{}` on success — that's the real confirmation the wr
 
 ### 5. Read the measurements back
 
-Your own patient token works here too — the gRPC security config allows `admin-service` *or*
-any authenticated caller for `GetMeasurementsForUser`, not just admin. `GetMeasurements` (no
-`userId`) resolves the user from the JWT itself instead, same request shape otherwise.
+`GetMeasurementsForUser` takes a caller-supplied `userId`, so only the admin service client
+(`KEYCLOAK_ADMIN_SERVICE_CLIENT_ID`, matched against the token's `client_id` claim) may call it;
+use the `SERVICE_TOKEN` from step 1. A patient token is rejected with `PERMISSION_DENIED`.
+Patients call `GetMeasurements` (no `userId`), which resolves the user from the JWT itself,
+same request shape otherwise.
 
 **Careful: this is a different timestamp format than `CreateMeasurement` used above** —
 `startDateTime`/`endDateTime` here are parsed as `OffsetDateTime`/`ZonedDateTime` (ISO-8601 with
@@ -249,7 +251,7 @@ a zone, e.g. `...Z`), not the space-separated `yyyy-MM-dd HH:mm:ss.SSS` `measure
 
 ```bash
 grpcurl -plaintext \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Authorization: Bearer ${SERVICE_TOKEN}" \
   -d "{\"userId\":\"${ONBOARDING_ID}\",\"measurementTypes\":[\"HEART_RATE\",\"OXYGEN_SATURATION\"],\"startDateTime\":\"2026-09-15T09:00:00Z\",\"endDateTime\":\"2026-09-15T11:00:00Z\",\"page\":0,\"size\":10}" \
   localhost:8082 si.result.eearly.genproto.MeasurementService/GetMeasurementsForUser
 ```
