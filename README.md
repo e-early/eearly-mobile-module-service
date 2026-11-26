@@ -121,6 +121,11 @@ calling out specifically:
 | `MOBILE_KEYCLOAK_CLIENT_ID` | `eearly-mobile` | Client used for onboarding links |
 | `EHR_KEYCLOAK_REALM` | `eearly-ehrbase` | EHR Keycloak realm |
 | `EHR_KEYCLOAK_CLIENT_ID` | `ehrbase` | EHR Keycloak client |
+| `ADMIN_SERVICE_URL` | empty | Base URL of the admin service's internal API; with the three below, enables telling it when a patient changes their language in the app. Left empty, nothing is sent |
+| `ADMIN_KEYCLOAK_BASE_URL` | empty | Keycloak that issues this service's token for the admin service |
+| `ADMIN_KEYCLOAK_REALM` | `eearly-admin` | Realm of that Keycloak |
+| `ADMIN_KEYCLOAK_CLIENT_ID` | `eearly-mobile-service` | Client (client credentials) used for the call |
+| `ADMIN_KEYCLOAK_CLIENT_SECRET` | empty | Secret of that client |
 
 Push notifications (Firebase) are **not included** in this OSS build — `sendNotificationForToken`,
 `notifyAboutNewSchedules`, and `sendMeasurementReminder` are no-ops (they log and return, no

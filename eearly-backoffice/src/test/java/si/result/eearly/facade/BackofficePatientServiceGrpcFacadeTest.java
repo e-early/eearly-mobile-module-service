@@ -61,14 +61,36 @@ class BackofficePatientServiceGrpcFacadeTest {
   }
 
   @Test
-  void acceptsTheLanguageFieldButIgnoresIt() throws ValidationException {
+  void passesTheLanguageOn() throws ValidationException {
     var request = UpsertPatientDemographicsRequest.newBuilder()
         .setUserId(USER_ID).setDateOfBirth("1980-05-17")
         .setSex(si.result.eearly.genproto.Sex.MALE).setLanguage("en").build();
 
     facade.upsertPatientDemographics(request);
 
-    verify(profileService).upsertDemographics(any());
+    ArgumentCaptor<UpsertDemographicsCommand> captor =
+        ArgumentCaptor.forClass(UpsertDemographicsCommand.class);
+    verify(profileService).upsertDemographics(captor.capture());
+    assertThat(captor.getValue().language()).isEqualTo("en");
+  }
+
+  @Test
+  void emptyLanguageMeansKeepTheCurrentOne() throws ValidationException {
+    assertThat(command("1980-05-17", si.result.eearly.genproto.Sex.MALE).language()).isNull();
+  }
+
+  @Test
+  void rejectsAnUnsupportedLanguage() throws ValidationException {
+    var request = UpsertPatientDemographicsRequest.newBuilder()
+        .setUserId(USER_ID).setDateOfBirth("1980-05-17")
+        .setSex(si.result.eearly.genproto.Sex.MALE).setLanguage("de").build();
+
+    var e = catchThrowableOfType(ServiceInvalidRequestException.class,
+        () -> facade.upsertPatientDemographics(request));
+
+    assertThat(e).isNotNull();
+    assertThat(e.getErrorCode()).isEqualTo(si.result.eearly.genproto.ErrorCode.VALIDATION_ERROR);
+    verify(profileService, never()).upsertDemographics(any());
   }
 
   @Test

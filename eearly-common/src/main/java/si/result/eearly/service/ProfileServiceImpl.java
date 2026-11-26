@@ -3,9 +3,11 @@ package si.result.eearly.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import si.result.eearly.admin.AdminServiceClient;
 import si.result.eearly.domain.exception.ErrorCode;
 import si.result.eearly.domain.exception.ValidationException;
 import si.result.eearly.domain.profile.Profile;
+import si.result.eearly.domain.profile.ProfileLanguage;
 import si.result.eearly.domain.profile.UpsertDemographicsCommand;
 import si.result.eearly.domain.profile.UpsertProfileCommand;
 import si.result.eearly.ehr.EhrbaseClient;
@@ -26,6 +28,7 @@ public class ProfileServiceImpl implements ProfileService {
   private final ProfileRepository profileRepository;
   private final EhrbaseClient ehrbaseClient;
   private final Clock clock;
+  private final AdminServiceClient adminServiceClient;
 
   @Override
   public Profile upsertProfile(UpsertProfileCommand command) throws ValidationException {
@@ -87,7 +90,35 @@ public class ProfileServiceImpl implements ProfileService {
         .orElseGet(() -> Profile.createProfileFromId(command.userId()));
     profile.setDateOfBirth(command.dateOfBirth());
     profile.setSex(command.sex());
+    if (command.language() != null) {
+      profile.setLanguage(command.language());
+    }
     return profileRepository.save(profile);
+  }
+
+  /**
+   * Saves the language the patient picked in the app, then tells the admin service, which owns it
+   * (its emails use it). The admin service call is best effort so the app's change never fails
+   * on it; but if it doesn't get through, the admin service still has the old language and sends
+   * it back here on its next demographics sync.
+   */
+  @Override
+  public Profile updateLanguage(String userId, String language) throws ValidationException {
+    if (!ProfileLanguage.isSupported(language)) {
+      throw new ValidationException(ErrorCode.VALIDATION_ERROR,
+          "language must be one of " + ProfileLanguage.SUPPORTED);
+    }
+    Profile profile = getProfile(userId);
+    profile.setLanguage(language);
+    Profile saved = profileRepository.save(profile);
+
+    try {
+      adminServiceClient.changePatientLanguage(saved.getUserId(), language);
+    } catch (RuntimeException e) {
+      log.warn("Could not send the language of patient {} to the admin service: {}",
+          saved.getUserId(), e.getMessage(), e);
+    }
+    return saved;
   }
 
   void validateProfileUpsert(UpsertProfileCommand command) throws ValidationException {

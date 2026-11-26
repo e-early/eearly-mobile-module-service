@@ -18,6 +18,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import si.result.eearly.admin.AdminServiceClient;
 import si.result.eearly.domain.enums.Sex;
 import si.result.eearly.domain.exception.ErrorCode;
 import si.result.eearly.domain.exception.ValidationException;
@@ -39,7 +40,8 @@ class ProfileServiceDemographicsTest {
   void setUp() {
     profileRepository = mock(ProfileRepository.class);
     when(profileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-    profileService = new ProfileServiceImpl(profileRepository, mock(EhrbaseClient.class), CLOCK);
+    profileService = new ProfileServiceImpl(profileRepository, mock(EhrbaseClient.class), CLOCK,
+        mock(AdminServiceClient.class));
   }
 
   @Test
@@ -47,12 +49,13 @@ class ProfileServiceDemographicsTest {
     when(profileRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
     profileService.upsertDemographics(new UpsertDemographicsCommand(
-        USER_ID.toString(), LocalDate.parse("1980-05-17"), Sex.FEMALE));
+        USER_ID.toString(), LocalDate.parse("1980-05-17"), Sex.FEMALE, "en"));
 
     Profile saved = savedProfile();
     assertThat(saved.getUserId()).isEqualTo(USER_ID);
     assertThat(saved.getDateOfBirth()).isEqualTo(LocalDate.parse("1980-05-17"));
     assertThat(saved.getSex()).isEqualTo(Sex.FEMALE);
+    assertThat(saved.getLanguage()).isEqualTo("en");
   }
 
   @Test
@@ -64,7 +67,7 @@ class ProfileServiceDemographicsTest {
     when(profileRepository.findById(USER_ID)).thenReturn(Optional.of(existing));
 
     profileService.upsertDemographics(new UpsertDemographicsCommand(
-        USER_ID.toString(), LocalDate.parse("1980-05-17"), Sex.OTHER));
+        USER_ID.toString(), LocalDate.parse("1980-05-17"), Sex.OTHER, "sl"));
 
     Profile saved = savedProfile();
     assertThat(saved.getSex()).isEqualTo(Sex.OTHER);
@@ -80,7 +83,7 @@ class ProfileServiceDemographicsTest {
     existing.setSex(Sex.MALE);
     when(profileRepository.findById(USER_ID)).thenReturn(Optional.of(existing));
 
-    profileService.upsertDemographics(new UpsertDemographicsCommand(USER_ID.toString(), null, null));
+    profileService.upsertDemographics(new UpsertDemographicsCommand(USER_ID.toString(), null, null, null));
 
     Profile saved = savedProfile();
     assertThat(saved.getDateOfBirth()).isNull();
@@ -88,8 +91,30 @@ class ProfileServiceDemographicsTest {
   }
 
   @Test
+  void withoutALanguage_keepsTheProfilesLanguage() throws ValidationException {
+    Profile existing = Profile.createProfileFromId(USER_ID.toString());
+    existing.setLanguage("en");
+    when(profileRepository.findById(USER_ID)).thenReturn(Optional.of(existing));
+
+    profileService.upsertDemographics(new UpsertDemographicsCommand(
+        USER_ID.toString(), LocalDate.parse("1980-05-17"), Sex.MALE, null));
+
+    assertThat(savedProfile().getLanguage()).isEqualTo("en");
+  }
+
+  @Test
+  void newProfileWithoutALanguage_isSlovenian() throws ValidationException {
+    when(profileRepository.findById(USER_ID)).thenReturn(Optional.empty());
+
+    profileService.upsertDemographics(new UpsertDemographicsCommand(
+        USER_ID.toString(), LocalDate.parse("1980-05-17"), Sex.MALE, null));
+
+    assertThat(savedProfile().getLanguage()).isEqualTo("sl");
+  }
+
+  @Test
   void rejectsDateOfBirthNotInThePast() {
-    var command = new UpsertDemographicsCommand(USER_ID.toString(), LocalDate.parse("2026-10-20"), Sex.MALE);
+    var command = new UpsertDemographicsCommand(USER_ID.toString(), LocalDate.parse("2026-10-20"), Sex.MALE, "sl");
 
     var e = catchThrowableOfType(ValidationException.class,
         () -> profileService.upsertDemographics(command));
@@ -103,7 +128,7 @@ class ProfileServiceDemographicsTest {
   @Test
   void commandToStringDoesNotContainPersonalData() {
     var command = new UpsertDemographicsCommand(
-        USER_ID.toString(), LocalDate.parse("1980-05-17"), Sex.FEMALE);
+        USER_ID.toString(), LocalDate.parse("1980-05-17"), Sex.FEMALE, "en");
 
     assertThat(command.toString())
         .doesNotContain("1980")

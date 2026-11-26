@@ -42,6 +42,7 @@ public interface ProfileMapper {
     @Mapping(source = "profile.notificationMeasurementDueMinutes", target = "notificationMeasurementDueMinutes")
     @Mapping(source = "profile.notificationNoInternet", target = "notificationNoInternet")
     @Mapping(source = "profile.notificationNoBluetooth", target = "notificationNoBluetooth")
+    @Mapping(source = "profile.language", target = "language")
     si.result.eearly.genproto.Profile toGrpcProfile(Profile profile, String username);
 
     @Named("byteArrayToString")
