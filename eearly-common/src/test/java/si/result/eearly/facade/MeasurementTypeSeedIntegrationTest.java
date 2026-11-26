@@ -42,6 +42,8 @@ class MeasurementTypeSeedIntegrationTest {
 
   private static final String SEED_MIGRATION =
       "db/migration/common/V2__seed_additional_measurement_types.sql";
+  private static final String ALIGN_MIGRATION =
+      "db/migration/common/V3__align_reference_data.sql";
 
   @Container
   @ServiceConnection
@@ -76,6 +78,74 @@ class MeasurementTypeSeedIntegrationTest {
   private void runSeedMigrationAgain() throws IOException {
     String sql = new ClassPathResource(SEED_MIGRATION).getContentAsString(StandardCharsets.UTF_8);
     jdbc.execute(sql);
+  }
+
+  private void runAlignMigrationAgain() throws IOException {
+    String sql = new ClassPathResource(ALIGN_MIGRATION).getContentAsString(StandardCharsets.UTF_8);
+    jdbc.execute(sql);
+  }
+
+  private String observationId(String type) {
+    return jdbc.queryForObject(
+        "select ehr_observation_id from measurement_type where measurement_type = ?",
+        String.class, type);
+  }
+
+  private List<String> renphoBluetoothNames() {
+    return jdbc.queryForList(
+        "select unnest(bluetooth_device_names) from device where id = '852e2c00-b08f-4747-8239-ddd21c0c131a'",
+        String.class);
+  }
+
+  @Test
+  void bodyHeightIsInCentimetres() {
+    var row = jdbc.queryForMap(
+        "select unit, min_value, max_value from measurement_type where measurement_type = 'BODY_HEIGHT'");
+
+    assertThat(row.get("unit")).isEqualTo("cm");
+    assertThat(((Number) row.get("min_value")).doubleValue()).isEqualTo(50.0);
+    assertThat(((Number) row.get("max_value")).doubleValue()).isEqualTo(300.0);
+  }
+
+  @Test
+  void variabilityObservationIdsUseTheEearlyArchetypes() {
+    assertThat(observationId("HEART_RATE_VARIABILITY"))
+        .isEqualTo("openEHR-EHR-OBSERVATION.eearly_heart_rate_variability.v0");
+    assertThat(observationId("STRESS_LEVEL"))
+        .isEqualTo("openEHR-EHR-OBSERVATION.eearly_stress_level.v0");
+    assertThat(observationId("GLUCOSE_VARIABILITY"))
+        .isEqualTo("openEHR-EHR-OBSERVATION.eearly_glucose_variability.v0");
+  }
+
+  @Test
+  void renphoScaleAdvertisesBothBluetoothNames() {
+    assertThat(renphoBluetoothNames()).containsExactlyInAnyOrder("QN-Scale", "Renpho-Scale");
+  }
+
+  @Test
+  void alignMigrationIsIdempotent() throws IOException {
+    runAlignMigrationAgain();
+    runAlignMigrationAgain();
+
+    assertThat(renphoBluetoothNames()).containsExactlyInAnyOrder("QN-Scale", "Renpho-Scale");
+    assertThat(observationId("GLUCOSE_VARIABILITY"))
+        .isEqualTo("openEHR-EHR-OBSERVATION.eearly_glucose_variability.v0");
+  }
+
+  @Test
+  void alignMigrationRestoresOldValues() throws IOException {
+    jdbc.update("update measurement_type set unit = 'm', min_value = 0, max_value = 3 where measurement_type = 'BODY_HEIGHT'");
+    jdbc.update("update measurement_type set ehr_observation_id = 'x' where measurement_type = 'STRESS_LEVEL'");
+    jdbc.update("update device set bluetooth_device_names = ARRAY['QN-Scale'] where id = '852e2c00-b08f-4747-8239-ddd21c0c131a'");
+
+    runAlignMigrationAgain();
+
+    assertThat(jdbc.queryForObject(
+        "select unit from measurement_type where measurement_type = 'BODY_HEIGHT'", String.class))
+        .isEqualTo("cm");
+    assertThat(observationId("STRESS_LEVEL"))
+        .isEqualTo("openEHR-EHR-OBSERVATION.eearly_stress_level.v0");
+    assertThat(renphoBluetoothNames()).containsExactlyInAnyOrder("QN-Scale", "Renpho-Scale");
   }
 
   @Test
