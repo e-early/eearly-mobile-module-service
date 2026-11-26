@@ -118,8 +118,12 @@ class ScheduleFilterCharacterizationTest {
         arguments("name:LIKE:lph", Set.of(ALPHA)),
         arguments("name:LIKE:%lph%", Set.of(ALPHA)),
         arguments("name:LIKE_IC:ALP", Set.of(ALPHA)),
-        arguments("name:IN:[Alpha,Beta]", Set.of(ALPHA, BETA)),
-        arguments("name:GT:Beta", Set.of(GAMMA)),
+          arguments("name:IN:[Alpha,Beta]", Set.of(ALPHA, BETA)),
+          // Spaces belong to the value, also inside lists; only commas separate list values.
+          arguments("description:EQ:First schedule", Set.of(ALPHA)),
+          arguments("name:IN:[Alpha Beta]", Set.of()),
+          arguments("description:IN:[First schedule,Second schedule]", Set.of(ALPHA, BETA)),
+          arguments("name:GT:Beta", Set.of(GAMMA)),
         arguments("description:ISNOTNULL", Set.of(ALPHA, BETA, GAMMA)),
         arguments("name:EQ:'Alpha'", Set.of(ALPHA)),
         arguments("name:EQ:\"Alpha\"", Set.of(ALPHA)),
@@ -165,7 +169,7 @@ class ScheduleFilterCharacterizationTest {
   }
 
   @Test
-  void currentDefectNinIgnoresItsList() {
+  void currentDefectNinWithSingleValueMatchesEverything() {
     assertThat(schedulesMatching("name:NIN:[Alpha]")).containsExactlyInAnyOrder(ALPHA, BETA, GAMMA);
   }
 
@@ -175,9 +179,10 @@ class ScheduleFilterCharacterizationTest {
     assertThat(schedulesMatching("name:EQ:Alpha;")).isEmpty();
   }
 
+  /** A list with one value is read as no values at all: IN matches nothing, NIN everything. */
   @Test
-  void currentDefectSpaceSeparatedListSilentlyMatchesNothing() {
-    assertThat(schedulesMatching("name:IN:[Alpha Beta]")).isEmpty();
+  void currentDefectSingleValueListIsIgnored() {
+    assertThat(schedulesMatching("name:IN:[Alpha]")).isEmpty();
   }
 
   @Test
