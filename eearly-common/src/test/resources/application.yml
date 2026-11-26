@@ -16,12 +16,12 @@ hashids:
   min-hash-length: 6
 
 keycloak:
-  auth-server-url: ${KEYCLOAK_URL:https://keycloak.result.si}
+  auth-server-url: ${KEYCLOAK_URL:http://localhost:9091}
   realm: ${KEYCLOAK_REALM:eEarly}
   admin:
     client:
       id: ${KEYCLOAK_CLIENT_ID:eearly-user-administrator}
-      secret: ${KEYCLOAK_CLIENT_SECRET:Bsa577WMV3pHJ5zbixsarDsM8wdGiL6U}
+      secret: ${KEYCLOAK_CLIENT_SECRET:test-only-not-a-secret}
 
 spring:
   application.name: eearly
