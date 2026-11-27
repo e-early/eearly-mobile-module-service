@@ -90,6 +90,13 @@ Start `eearly-mobile-module-keycloak` locally (see its README) so it's reachable
 
 ### 3. Environment
 
+Configuration layering: the core defaults live in the `eearly-common` library
+(`eearly-common/src/main/resources/eearly-mobile-defaults.yml`) and have the lowest precedence.
+The app's own `eearly/src/main/resources/application.yml` (app-level settings only), profile
+files, environment variables and system properties override them. Libraries `eearly-common`,
+`eearly-backoffice` and `eearly-mobile` are plain jars; only `eearly` is the runnable app. The
+default logging policy (`logback-spring.xml`) is packaged in `eearly-common` too.
+
 The app reads everything from environment variables (no `application-local.yaml` profile) —
 Spring does **not** auto-load `.env`. Copy [`.env.example`](.env.example) to `.env`, fill in the
 placeholders (Keycloak/EHR client secrets — see the comments in that file for where to get each
@@ -138,7 +145,7 @@ so existing clients still work; they just won't receive a push notification.
 The bundled migration (`eearly-common/src/main/resources/db/migration/common/V1__consolidated_schema.sql`)
 runs automatically on every startup via the app's own `FlywayInitializer`, which creates the
 `DB_SCHEMA` schema and tables for you if they don't already exist. This is independent of
-`spring.flyway.enabled` (`false` by default in `application.yml`) — **do not** set
+`spring.flyway.enabled` (`false` by default in the core defaults) — **do not** set
 `SPRING_FLYWAY_ENABLED=true`, it only turns on Spring Boot's own Flyway autoconfiguration, which
 registers a bean with the same name as `FlywayInitializer` and crashes the app on startup.
 
@@ -348,7 +355,7 @@ internal repos).
 
 ### App fails on startup with a missing/unset environment variable
 
-Most config keys in `eearly/src/main/resources/application.yml` have no default — double-check
+Most config keys in the core defaults (`eearly-common/src/main/resources/eearly-mobile-defaults.yml`) have no default — double-check
 the exports in [Environment](#3-environment) above, in particular `DB_URL`, `DB_USERNAME`,
 `DB_PASSWORD`, `KEYCLOAK_URL`, `EHR_BASE_URL`, `EHR_KEYCLOAK_BASE_URL`,
 `EHR_KEYCLOAK_CLIENT_SECRET`, `ONBOARDING_API_BASE_URL`, `ONBOARDING_BASE_URL`,

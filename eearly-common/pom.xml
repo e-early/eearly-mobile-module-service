@@ -134,6 +134,13 @@
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
+        <!-- used by the packaged logback-spring.xml (ECS JSON logging) -->
+        <dependency>
+            <groupId>co.elastic.logging</groupId>
+            <artifactId>logback-ecs-encoder</artifactId>
+            <version>1.7.0</version>
+        </dependency>
+
         <dependency>
             <groupId>org.ehrbase.openehr.sdk</groupId>
             <artifactId>generator</artifactId>
