@@ -51,7 +51,7 @@ public class ProfileServiceGrpcFacade {
         request.getBody());
 
     return SendFCMNotificationForTokenResponse.newBuilder()
-        .setFcmReturnMessage(returnMessage)
+        .setFcmReturnMessage(returnMessage == null ? "" : returnMessage)
         .build();
   }
 

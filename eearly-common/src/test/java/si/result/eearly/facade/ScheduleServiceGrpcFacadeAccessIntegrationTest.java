@@ -42,6 +42,7 @@ import si.result.eearly.repository.ScheduleRepository;
 import si.result.eearly.service.ScheduleEntryServiceImpl;
 import si.result.eearly.service.ScheduleServiceImpl;
 import si.result.eearly.service.UserPrincipalService;
+import si.result.eearly.service.push.PushNotificationService;
 
 /** The schedule read RPCs return only the calling user's schedules, whatever filter is sent. */
 @DataJpaTest(properties = {
@@ -75,6 +76,7 @@ class ScheduleServiceGrpcFacadeAccessIntegrationTest {
   @Autowired private EntityManager em;
 
   @MockitoBean private UserPrincipalService userPrincipalService;
+  @MockitoBean private PushNotificationService pushNotificationService;
 
   private Schedule scheduleOfUserOne;
   private Schedule scheduleOfUserTwo;

@@ -26,6 +26,7 @@ import si.result.eearly.domain.profile.Profile;
 import si.result.eearly.domain.profile.UpsertDemographicsCommand;
 import si.result.eearly.ehr.EhrbaseClient;
 import si.result.eearly.repository.ProfileRepository;
+import si.result.eearly.service.push.PushNotificationService;
 
 class ProfileServiceDemographicsTest {
 
@@ -41,7 +42,7 @@ class ProfileServiceDemographicsTest {
     profileRepository = mock(ProfileRepository.class);
     when(profileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     profileService = new ProfileServiceImpl(profileRepository, mock(EhrbaseClient.class), CLOCK,
-        mock(AdminServiceClient.class));
+        mock(AdminServiceClient.class), mock(PushNotificationService.class));
   }
 
   @Test
