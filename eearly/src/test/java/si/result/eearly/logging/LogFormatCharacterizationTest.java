@@ -56,4 +56,19 @@ class LogFormatCharacterizationTest {
     assertThat(LoggerFactory.getLogger("org.springframework.web.client.RestTemplate")
         .isDebugEnabled()).isFalse();
   }
+
+  /** Request lines under /api/v1/onboarding/ carry a one-time code; logback-spring.xml drops them. */
+  @Test
+  void onboardingCodesNeverReachTheLog(CapturedOutput output) {
+    String code = "q3hJ9s0Xf2yQp8LkVn1AaBcDeFgHiJkLmNoPqRsTuVw";
+    var logger = LoggerFactory.getLogger(LogFormatCharacterizationTest.class);
+
+    logger.info("Securing GET /api/v1/onboarding/7f9c2d3e-1111-4222-8333-444455556666/{}/configuration",
+        code);
+    logger.info("Request {}", "/api/v1/onboarding/7f9c2d3e-1111-4222-8333-444455556666/" + code);
+    logger.info("onboarding-path-control-marker POST /api/v1/onboarding/create-user");
+
+    assertThat(output.getOut()).doesNotContain(code)
+        .contains("onboarding-path-control-marker");
+  }
 }

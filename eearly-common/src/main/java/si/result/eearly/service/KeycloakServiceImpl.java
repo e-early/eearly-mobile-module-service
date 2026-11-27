@@ -109,6 +109,16 @@ public class KeycloakServiceImpl implements KeycloakService {
   }
 
   @Override
+  public boolean userExists(UUID userId) {
+    try {
+      keycloak.realm(keycloakRealm).users().get(userId.toString()).toRepresentation();
+      return true;
+    } catch (jakarta.ws.rs.NotFoundException e) {
+      return false;
+    }
+  }
+
+  @Override
   public UserToken getUserToken(UUID userId) throws ValidationException {
     if(userId == null) {
       throw new ValidationException(ErrorCode.VALIDATION_ERROR, "User id must be provided");
