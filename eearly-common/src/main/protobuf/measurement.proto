@@ -76,4 +76,5 @@ message Measurement {
   int32 measurementGroupId = 6;
   string measurementBatchId = 7;
   MeasurementMode measurementMode = 8;
+  optional string comment = 9;
 }

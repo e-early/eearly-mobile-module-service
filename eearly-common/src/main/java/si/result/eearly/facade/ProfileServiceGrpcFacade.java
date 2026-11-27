@@ -1,6 +1,7 @@
 package si.result.eearly.facade;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import si.result.eearly.domain.exception.ValidationException;
 import si.result.eearly.domain.profile.Profile;
@@ -9,6 +10,8 @@ import si.result.eearly.exception.ServiceInvalidRequestException;
 import si.result.eearly.genproto.SendFCMNotificationForTokenResponse;
 import si.result.eearly.genproto.SendFCMNotificationForTokenRequest;
 import si.result.eearly.genproto.ErrorCode;
+import si.result.eearly.genproto.UpdateLanguageRequest;
+import si.result.eearly.genproto.UpdateLanguageResponse;
 import si.result.eearly.genproto.UpsertProfileRequest;
 import si.result.eearly.genproto.UpsertProfileResponse;
 import si.result.eearly.mapper.ProfileMapper;
@@ -48,7 +51,7 @@ public class ProfileServiceGrpcFacade {
         request.getBody());
 
     return SendFCMNotificationForTokenResponse.newBuilder()
-        .setFcmReturnMessage(returnMessage)
+        .setFcmReturnMessage(returnMessage == null ? "" : returnMessage)
         .build();
   }
 
@@ -75,5 +78,26 @@ public class ProfileServiceGrpcFacade {
       throw new ServiceInvalidRequestException(e.getMessage(), ErrorCode.forNumber(e.getErrorCode().getNumVal()));
     }
     return response.build();
+  }
+
+  /** Acts only on the caller's own profile: the user comes from the token, never from the request. */
+  public UpdateLanguageResponse updateLanguage(UpdateLanguageRequest request) {
+    var userId = currentUserId();
+    try {
+      Profile profile = profileService.updateLanguage(userId, request.getLanguage());
+      return UpdateLanguageResponse.newBuilder()
+          .setLanguage(profile.getLanguage())
+          .build();
+    } catch (ValidationException e) {
+      throw new ServiceInvalidRequestException(e.getMessage(), ErrorCode.forNumber(e.getErrorCode().getNumVal()));
+    }
+  }
+
+  private String currentUserId() {
+    var principal = userPrincipalService.getUserPrincipal();
+    if (principal == null || principal.getId() == null) {
+      throw new AccessDeniedException("No user in the access token");
+    }
+    return principal.getId();
   }
 }

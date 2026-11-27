@@ -161,7 +161,8 @@ public class UltrahumanMetrics {
                         batchId,
                         Instant.ofEpochSecond(value.getTimestamp()).atOffset(ZoneOffset.UTC)
                             .toZonedDateTime(),
-                        deviceUser.getDevice().getId()
+                        deviceUser.getDevice().getId(),
+                        null
 
                     );
                     measurements.add(measurement);
@@ -242,7 +243,8 @@ public class UltrahumanMetrics {
                       batchId,
                       Instant.ofEpochSecond(value.getTimestamp()).atOffset(ZoneOffset.UTC)
                           .toZonedDateTime(),
-                      deviceUser.getDevice().getId()
+                      deviceUser.getDevice().getId(),
+                      null
                       );
 
                     measurements.add(measurement);
@@ -645,7 +647,8 @@ public class UltrahumanMetrics {
                       batchId,
                       Instant.ofEpochSecond(value.getTimestamp()).atOffset(ZoneOffset.UTC)
                           .toZonedDateTime(),
-                      deviceUser.getDevice().getId()
+                      deviceUser.getDevice().getId(),
+                      null
                       );
 
                     measurements.add(measurement);

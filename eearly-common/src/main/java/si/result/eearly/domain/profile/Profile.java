@@ -3,9 +3,11 @@ package si.result.eearly.domain.profile;
 import jakarta.persistence.*;
 import lombok.*;
 import si.result.eearly.domain.device.DeviceUser;
+import si.result.eearly.domain.enums.Sex;
 import si.result.eearly.domain.schedule.Schedule;
 import si.result.eearly.domain.token.MobileToken;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
@@ -40,6 +42,26 @@ public class Profile {
 
     @Column(name = "notification_no_bluetooth", nullable = false)
     private boolean notificationNoBluetooth = true;
+
+    /**
+     * Synced from the admin service; see {@code BackofficePatientService}. Personal data: this class
+     * has no generated toString, keep it that way (or exclude these two fields).
+     */
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    /** Synced from the admin service; see {@code BackofficePatientService}. Personal data. */
+    @Column(name = "sex")
+    @Enumerated(EnumType.STRING)
+    private Sex sex;
+
+    /**
+     * ISO 639-1 language of the app and push notifications ({@link ProfileLanguage}). Synced from
+     * the admin service, or changed by the patient in the app (UpdateLanguage). Deliberately not in
+     * {@link #apply}, so UpsertProfile never resets it.
+     */
+    @Column(name = "language", length = 3, nullable = false)
+    private String language = ProfileLanguage.DEFAULT;
 
     @OneToMany(mappedBy = "primaryKey.profile")
     @EqualsAndHashCode.Exclude

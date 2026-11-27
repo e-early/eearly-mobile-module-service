@@ -1,8 +1,10 @@
 package si.result.eearly.mapper;
 
 import java.util.UUID;
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.NullValueCheckStrategy;
 import si.result.eearly.domain.measurement.CreateMeasurementCommand;
 import si.result.eearly.domain.measurement.GetMeasurementsCommand;
 import si.result.eearly.domain.measurement.MeasurementType;
@@ -31,6 +33,11 @@ public interface MeasurementMapper {
   @Mapping(source = "batchId", target = "measurementBatchId")
   @Mapping(source = "measurementTime", target = "measuredAt")
   @Mapping(source = "deviceId", target = "deviceId")
+  @Mapping(source = "comment", target = "comment")
+  // The generated protobuf setter for an `optional string` field throws on null, and MapStruct
+  // only null-guards properties it also converts. Force a null check for every property so a
+  // measurement without a comment leaves the field unset.
+  @BeanMapping(nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
   si.result.eearly.genproto.Measurement toGrpcMeasurement(si.result.eearly.domain.measurement.Measurement measurement);
 
   @Mapping(source = "ehrId", target = "ehrId")

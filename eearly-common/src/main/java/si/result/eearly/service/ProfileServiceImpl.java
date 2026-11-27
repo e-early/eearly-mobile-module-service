@@ -3,13 +3,19 @@ package si.result.eearly.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import si.result.eearly.admin.AdminServiceClient;
 import si.result.eearly.domain.exception.ErrorCode;
 import si.result.eearly.domain.exception.ValidationException;
 import si.result.eearly.domain.profile.Profile;
+import si.result.eearly.domain.profile.ProfileLanguage;
+import si.result.eearly.domain.profile.UpsertDemographicsCommand;
 import si.result.eearly.domain.profile.UpsertProfileCommand;
 import si.result.eearly.ehr.EhrbaseClient;
 import si.result.eearly.repository.ProfileRepository;
+import si.result.eearly.service.push.PushNotificationService;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
@@ -22,6 +28,9 @@ public class ProfileServiceImpl implements ProfileService {
 
   private final ProfileRepository profileRepository;
   private final EhrbaseClient ehrbaseClient;
+  private final Clock clock;
+  private final AdminServiceClient adminServiceClient;
+  private final PushNotificationService pushNotificationService;
 
   @Override
   public Profile upsertProfile(UpsertProfileCommand command) throws ValidationException {
@@ -56,15 +65,60 @@ public class ProfileServiceImpl implements ProfileService {
 
   @Override
   public String sendNotificationForToken(String token, String title, String body) {
-    // Push notifications (Firebase) are not part of this OSS build -- no-op.
-    log.debug("sendNotificationForToken called but push notifications are not configured in this build");
-    return null;
+    return pushNotificationService.sendNotificationForToken(token, title, body);
   }
 
   @Override
   public Profile getProfile(String id) throws ValidationException{
     return profileRepository.findById(UUID.fromString(id)).orElseThrow(() -> new ValidationException(
             ErrorCode.INTERNAL_ERROR, String.format("User profile with id %s does not exist", id)));
+  }
+
+  /**
+   * Creates the profile when the admin service syncs a patient that has not opened the app yet;
+   * the app's own UpsertProfile later fills in the rest without touching these fields.
+   * Date of birth and sex are personal data and are never logged.
+   */
+  @Override
+  public Profile upsertDemographics(UpsertDemographicsCommand command) throws ValidationException {
+    if (command.dateOfBirth() != null && !command.dateOfBirth().isBefore(LocalDate.now(clock))) {
+      throw new ValidationException(ErrorCode.VALIDATION_ERROR, "dateOfBirth must be in the past");
+    }
+
+    UUID userId = UUID.fromString(command.userId());
+    Profile profile = profileRepository.findById(userId)
+        .orElseGet(() -> Profile.createProfileFromId(command.userId()));
+    profile.setDateOfBirth(command.dateOfBirth());
+    profile.setSex(command.sex());
+    if (command.language() != null) {
+      profile.setLanguage(command.language());
+    }
+    return profileRepository.save(profile);
+  }
+
+  /**
+   * Saves the language the patient picked in the app, then tells the admin service, which owns it
+   * (its emails use it). The admin service call is best effort so the app's change never fails
+   * on it; but if it doesn't get through, the admin service still has the old language and sends
+   * it back here on its next demographics sync.
+   */
+  @Override
+  public Profile updateLanguage(String userId, String language) throws ValidationException {
+    if (!ProfileLanguage.isSupported(language)) {
+      throw new ValidationException(ErrorCode.VALIDATION_ERROR,
+          "language must be one of " + ProfileLanguage.SUPPORTED);
+    }
+    Profile profile = getProfile(userId);
+    profile.setLanguage(language);
+    Profile saved = profileRepository.save(profile);
+
+    try {
+      adminServiceClient.changePatientLanguage(saved.getUserId(), language);
+    } catch (RuntimeException e) {
+      log.warn("Could not send the language of patient {} to the admin service: {}",
+          saved.getUserId(), e.getMessage(), e);
+    }
+    return saved;
   }
 
   void validateProfileUpsert(UpsertProfileCommand command) throws ValidationException {

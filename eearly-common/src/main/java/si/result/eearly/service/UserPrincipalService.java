@@ -25,8 +25,6 @@ public class UserPrincipalService {
 
 		if (authentication.getPrincipal() instanceof Jwt) {
 			Jwt jwt = (Jwt) authentication.getPrincipal();
-			log.debug("jwt: {}", jwt.getClaims());
-
 			Map<String, Object> claims = new HashMap<>(jwt.getClaims());
 
 			ObjectMapper mapper = new ObjectMapper();

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Development profile: Spring Boot's readable console and file output.
+  All other profiles: one ECS JSON object per line on the console and in the log file,
+  for log shippers such as Filebeat/Elastic. Keep the ECS layout stable: dashboards and
+  alerts rely on its fields (checked by LogFormatCharacterizationTest).
+-->
+<configuration>
+  <property name="LOG_FILE"
+      value="${LOG_FILE:-${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}}/spring.log}"/>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <!-- Request paths under /api/v1/onboarding/ carry one-time codes; keep them out of every log. -->
+  <turboFilter class="si.result.eearly.logging.OnboardingPathLogFilter"/>
+
+  <springProfile name="development">
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+      <appender-ref ref="FILE"/>
+    </root>
+  </springProfile>
+
+  <springProfile name="!development">
+    <include resource="co/elastic/logging/logback/boot/ecs-console-appender.xml"/>
+    <include resource="co/elastic/logging/logback/boot/ecs-file-appender.xml"/>
+    <root level="INFO">
+      <appender-ref ref="ECS_JSON_CONSOLE"/>
+      <appender-ref ref="ECS_JSON_FILE"/>
+    </root>
+  </springProfile>
+</configuration>

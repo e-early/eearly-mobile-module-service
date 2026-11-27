@@ -12,5 +12,8 @@ public interface KeycloakService {
 
   User createUser(CreateUserCommand command) throws ValidationException;
 
+  /** Whether a user with the given id exists in the realm. */
+  boolean userExists(UUID userId);
+
   UserToken getUserToken(UUID userId) throws ValidationException;
 }

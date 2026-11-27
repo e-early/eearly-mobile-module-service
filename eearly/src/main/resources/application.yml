@@ -1,20 +1,11 @@
+# INFO by default: DEBUG output contains token claims and request bodies (personal and health
+# data). Verbose levels live in application-development.yml.
 logging.level:
-  si.result.eearly: DEBUG
-  org.springframework:
-    web.client.RestTemplate: DEBUG
-    security: DEBUG
-    cache: TRACE
+  root: INFO
 
 logging:
   file:
     name: ${LOGGING_FILE_PATH:./logs/eearly-mobile.log}
-  loggers:
-    http:
-      enabled: true
-      log-response: true
-      log-authorization-header: false
-    method:
-      enabled: true
 
 server:
   port: 8081
@@ -94,8 +85,28 @@ ehr:
     client-id: ${EHR_KEYCLOAK_CLIENT_ID:ehrbase}
     client-secret: ${EHR_KEYCLOAK_CLIENT_SECRET}
 
+# The admin service's internal API, for what the patient changes in the app (their language).
+# Left blank, nothing is sent and the admin service keeps its own value.
+admin-service:
+  base-url: ${ADMIN_SERVICE_URL:}
+  keycloak:
+    base-url: ${ADMIN_KEYCLOAK_BASE_URL:}
+    realm: ${ADMIN_KEYCLOAK_REALM:eearly-admin}
+    client-id: ${ADMIN_KEYCLOAK_CLIENT_ID:eearly-mobile-service}
+    client-secret: ${ADMIN_KEYCLOAK_CLIENT_SECRET:}
+
 onboarding:
   api_base_url: ${ONBOARDING_API_BASE_URL}
+  # One-time codes carried by onboarding links.
+  code:
+    # How long a link stays valid: ISO-8601 (P30D) or simple (30d).
+    validity: ${ONBOARDING_CODE_VALIDITY:P30D}
+  # Limit for the anonymous endpoints (app store redirect and code redemption), per client address.
+  rate-limit:
+    requests-per-minute: ${ONBOARDING_RATE_LIMIT_PER_MINUTE:10}
+    # Use the first X-Forwarded-For address instead of the connection's address. Only behind a
+    # proxy that sets (and overwrites) the header; otherwise clients could pick their own address.
+    trust-forwarded-for: ${ONBOARDING_RATE_LIMIT_TRUST_FORWARDED_FOR:false}
   app:
     base-url: ${ONBOARDING_BASE_URL}
     ios:

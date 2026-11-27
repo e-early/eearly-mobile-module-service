@@ -19,14 +19,14 @@ Modules:
 | Java | 22 |
 | Maven | 3.9+ (wrapper `./mvnw` included) |
 | Docker | local Postgres + Mailhog + nginx |
-| Nexus | *optional* — `https://nexus.result.si`; not required to build, see below |
+| Nexus | `https://nexus.result.si` (VPN); required to build, see below |
 
 ### Maven configuration
 
-This project's internal (`si.result.r3`/`si.result.lib`) dependencies are vendored into
-[`libs-repo/`](libs-repo/README.md), so building (`mvn package`) does **not** require Nexus
-access or `~/.m2/settings.xml` credentials. The settings below are only needed if you have
-`nexus.result.si` access and want to `mvn deploy` (publish) to the internal
+This project's internal `si.result.r3` library (`r3-rest-filter`) is resolved from Result's Nexus
+(`https://nexus.result.si/repository/r3-release/`, declared in the root `pom.xml`) until it is
+published publicly, so building (`mvn package`) needs access to it (VPN); reads are anonymous, so
+no `~/.m2/settings.xml` credentials are needed for that. The settings below are only needed if you want to `mvn deploy` (publish) to the internal
 `eearly-backend-release`/`eearly-backend-snapshot` repos:
 
 ```xml
@@ -119,8 +119,16 @@ calling out specifically:
 | `KEYCLOAK_ADMIN_SERVICE_CLIENT_ID` | `admin-service` | Client `eearly-admin-module-service` authenticates as |
 | `MOBILE_KEYCLOAK_REALM` | `eearly-mobile` | Realm used for onboarding links |
 | `MOBILE_KEYCLOAK_CLIENT_ID` | `eearly-mobile` | Client used for onboarding links |
+| `ONBOARDING_CODE_VALIDITY` | `P30D` | How long an onboarding link stays valid (ISO-8601 such as `P30D`, or `30d`); a link works once |
+| `ONBOARDING_RATE_LIMIT_PER_MINUTE` | `10` | Requests per minute and client address for the anonymous onboarding endpoints (`429` above it) |
+| `ONBOARDING_RATE_LIMIT_TRUST_FORWARDED_FOR` | `false` | Use the first `X-Forwarded-For` address as the client address; only behind a proxy that sets the header |
 | `EHR_KEYCLOAK_REALM` | `eearly-ehrbase` | EHR Keycloak realm |
 | `EHR_KEYCLOAK_CLIENT_ID` | `ehrbase` | EHR Keycloak client |
+| `ADMIN_SERVICE_URL` | empty | Base URL of the admin service's internal API; with the three below, enables telling it when a patient changes their language in the app. Left empty, nothing is sent |
+| `ADMIN_KEYCLOAK_BASE_URL` | empty | Keycloak that issues this service's token for the admin service |
+| `ADMIN_KEYCLOAK_REALM` | `eearly-admin` | Realm of that Keycloak |
+| `ADMIN_KEYCLOAK_CLIENT_ID` | `eearly-mobile-service` | Client (client credentials) used for the call |
+| `ADMIN_KEYCLOAK_CLIENT_SECRET` | empty | Secret of that client |
 
 Push notifications (Firebase) are **not included** in this OSS build — `sendNotificationForToken`,
 `notifyAboutNewSchedules`, and `sendMeasurementReminder` are no-ops (they log and return, no
@@ -173,10 +181,9 @@ needed below.
 
 ### 1. Get a token authorized to create users
 
-`POST /api/v1/onboarding/create-user` requires the realm role `onboard-patient` — it is **not**
-public despite sitting under `/api/v1/onboarding/**`, which is otherwise permitAll (see
-`WebSecurityConfiguration`: the more specific `create-user` matcher is declared first and wins).
-The `admin-service` client's service account carries that role, so get a token as that client:
+`POST /api/v1/onboarding/create-user` and `POST /api/v1/onboarding/users/{userId}/onboarding-link`
+require the realm role `onboard-patient` (see `WebSecurityConfiguration`). The `admin-service`
+client's service account carries that role, so get a token as that client:
 
 ```bash
 export ADMIN_SERVICE_SECRET=<from mobile Keycloak: Clients -> admin-service -> Credentials>
@@ -199,21 +206,34 @@ curl -s -X POST http://localhost:8081/api/v1/onboarding/create-user \
   -d '{"firstName":"Test","lastName":"User","email":"test.'"$(date +%s)"'@example.com"}' \
   | tee /tmp/user.json | jq .
 
-export ONBOARDING_ID=$(jq -r '.user.id' /tmp/user.json)
+export USER_ID=$(jq -r '.user.id' /tmp/user.json)
+export ONBOARDING_CODE=$(jq -r '.onboardingUrl' /tmp/user.json | awk -F/ '{print $NF}')
 ```
 
-`onboardingUrl` in the response is just `http://localhost:8081/{userId}` — not a path you can call
-directly, and not the `/onboarding/{id}/configuration` shape a quick skim might suggest. Use
-`user.id` instead.
+`onboardingUrl` in the response is `<ONBOARDING_BASE_URL>/{code}`, where `{code}` is a one-time
+onboarding code (43 URL-safe characters). The app takes the link, appends `/configuration` and
+redeems the code at `/api/v1/onboarding/{code}/configuration` (next step); the response carries
+the patient's `userId`. Opening the link in a
+browser (`GET /api/v1/onboarding/{code}`) only redirects to the app store and does not use up the code. A code is valid for
+`ONBOARDING_CODE_VALIDITY` (default 30 days) and works once. To give an existing patient a new
+link, call `POST /api/v1/onboarding/users/{userId}/onboarding-link` with the same service token; it
+returns `{"onboardingUrl": "..."}` and any earlier unused link stops working.
 
 ### 3. Get the patient JWT
 
 ```bash
-curl -s "http://localhost:8081/api/v1/onboarding/${ONBOARDING_ID}/configuration" \
+curl -s "http://localhost:8081/api/v1/onboarding/${ONBOARDING_CODE}/configuration" \
   | tee /tmp/config.json | jq .
 
 export ACCESS_TOKEN=$(jq -r '.accessToken' /tmp/config.json)
 ```
+
+The code is used up by this call: repeating it, or using an unknown, expired or malformed code,
+returns the same `404` (as do links in the old `/{userId}` format). The endpoint is anonymous and limited per client address
+(`ONBOARDING_RATE_LIMIT_PER_MINUTE`, default 10 per minute; `429` when exceeded). Behind a reverse
+proxy that sets `X-Forwarded-For`, set `ONBOARDING_RATE_LIMIT_TRUST_FORWARDED_FOR=true` so the
+limit applies per client and not per proxy. Onboarding codes are never written to the service's
+logs; the bundled nginx configuration masks them in its access log as well.
 
 ### 4. Push measurements (gRPC)
 
@@ -239,9 +259,11 @@ Both calls should return `{}` on success — that's the real confirmation the wr
 
 ### 5. Read the measurements back
 
-Your own patient token works here too — the gRPC security config allows `admin-service` *or*
-any authenticated caller for `GetMeasurementsForUser`, not just admin. `GetMeasurements` (no
-`userId`) resolves the user from the JWT itself instead, same request shape otherwise.
+`GetMeasurementsForUser` takes a caller-supplied `userId`, so only the admin service client
+(`KEYCLOAK_ADMIN_SERVICE_CLIENT_ID`, matched against the token's `client_id` claim) may call it;
+use the `SERVICE_TOKEN` from step 1. A patient token is rejected with `PERMISSION_DENIED`.
+Patients call `GetMeasurements` (no `userId`), which resolves the user from the JWT itself,
+same request shape otherwise.
 
 **Careful: this is a different timestamp format than `CreateMeasurement` used above** —
 `startDateTime`/`endDateTime` here are parsed as `OffsetDateTime`/`ZonedDateTime` (ISO-8601 with
@@ -249,8 +271,8 @@ a zone, e.g. `...Z`), not the space-separated `yyyy-MM-dd HH:mm:ss.SSS` `measure
 
 ```bash
 grpcurl -plaintext \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -d "{\"userId\":\"${ONBOARDING_ID}\",\"measurementTypes\":[\"HEART_RATE\",\"OXYGEN_SATURATION\"],\"startDateTime\":\"2026-09-15T09:00:00Z\",\"endDateTime\":\"2026-09-15T11:00:00Z\",\"page\":0,\"size\":10}" \
+  -H "Authorization: Bearer ${SERVICE_TOKEN}" \
+  -d "{\"userId\":\"${USER_ID}\",\"measurementTypes\":[\"HEART_RATE\",\"OXYGEN_SATURATION\"],\"startDateTime\":\"2026-09-15T09:00:00Z\",\"endDateTime\":\"2026-09-15T11:00:00Z\",\"page\":0,\"size\":10}" \
   localhost:8082 si.result.eearly.genproto.MeasurementService/GetMeasurementsForUser
 ```
 
@@ -304,15 +326,25 @@ EHRbase (openEHR) classes are generated by running the generator plugin inside t
 
 ---
 
+## Push notifications
+
+This build ships no push notification provider. The calls that would send a push (a new schedule,
+a measurement reminder, and the token notification RPC) are logged at DEBUG level and nothing is
+sent. The token notification RPC returns an empty message id.
+
+To send them, provide a bean of type `si.result.eearly.service.push.PushNotificationService` from
+an add-on module on the classpath. Its bean replaces the default logging implementation, which
+registers only when no other `PushNotificationService` bean exists.
+
 ## Troubleshooting
 
 ### Nexus / Maven resolve failure
 
-This project's internal (`si.result.r3`/`si.result.lib`) dependencies are vendored into
-[`libs-repo/`](libs-repo/README.md), so `mvn package` does **not** require VPN/Nexus access —
-if you're hitting a resolve failure, it's most likely a public artifact (Maven Central) instead;
-retry, or check your network. VPN + `~/.m2/settings.xml` credentials are only needed for
-`mvn deploy` (publishing to the internal repos).
+This project's internal `si.result.r3:r3-rest-filter` library is resolved from Result's Nexus until
+it is published publicly, so `mvn package` needs VPN access to `https://nexus.result.si`. If you hit a
+resolve failure for other artifacts, it's most likely a public one (Maven Central); retry, or check
+your network. `~/.m2/settings.xml` credentials are only needed for `mvn deploy` (publishing to the
+internal repos).
 
 ### App fails on startup with a missing/unset environment variable
 

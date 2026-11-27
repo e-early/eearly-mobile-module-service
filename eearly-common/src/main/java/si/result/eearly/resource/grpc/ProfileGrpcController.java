@@ -13,6 +13,8 @@ import si.result.eearly.genproto.UpdateUsernameResponse;
 import si.result.eearly.genproto.UpdateUsernameRequest;
 import si.result.eearly.genproto.GetProfileRequest;
 import si.result.eearly.genproto.GetProfileResponse;
+import si.result.eearly.genproto.UpdateLanguageRequest;
+import si.result.eearly.genproto.UpdateLanguageResponse;
 
 @GrpcService
 @RequiredArgsConstructor
@@ -45,6 +47,13 @@ public class ProfileGrpcController extends ProfileServiceGrpc.ProfileServiceImpl
 	@Override
 	public void sendFCMNotificationForToken(SendFCMNotificationForTokenRequest request, StreamObserver<si.result.eearly.genproto.SendFCMNotificationForTokenResponse> responseObserver) {
 		SendFCMNotificationForTokenResponse response = profileService.sendNotificationForToken(request);
+		responseObserver.onNext(response);
+		responseObserver.onCompleted();
+	}
+
+	@Override
+	public void updateLanguage(UpdateLanguageRequest request, StreamObserver<UpdateLanguageResponse> responseObserver) {
+		UpdateLanguageResponse response = profileService.updateLanguage(request);
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
 	}

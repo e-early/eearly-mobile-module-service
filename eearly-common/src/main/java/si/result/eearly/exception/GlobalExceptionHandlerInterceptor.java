@@ -3,6 +3,7 @@ package si.result.eearly.exception;
 import io.grpc.*;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.interceptor.GrpcGlobalServerInterceptor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import si.result.eearly.domain.exception.DeviceUserAlreadyExistsException;
 import si.result.eearly.domain.exception.NotFoundException;
@@ -25,8 +26,8 @@ public class GlobalExceptionHandlerInterceptor implements ServerInterceptor {
         public void onMessage(ReqT message) {
           try {
             super.onMessage(message); // onNext called
-          } catch (Throwable e) {
-            log.error("Error |", e);
+          } catch (Exception e) {
+            logUnexpected(e);
             handleEndpointException(e, serverCall);
           }
         }
@@ -35,20 +36,22 @@ public class GlobalExceptionHandlerInterceptor implements ServerInterceptor {
         public void onHalfClose() {
           try {
             super.onHalfClose(); // onCompleted called
-          } catch (Throwable e) {
-            log.error("Error |", e);
+          } catch (Exception e) {
+            logUnexpected(e);
             handleEndpointException(e, serverCall);
           }
         }
       };
-    } catch (Throwable t) {
-      log.error("Error |", t);
-      return handleInterceptorException(t, serverCall);
+    } catch (Exception e) {
+      log.error("Error |", e);
+      return handleInterceptorException(e, serverCall);
     }
   }
 
   private <ReqT, RespT> void handleEndpointException(Throwable t, ServerCall<ReqT, RespT> serverCall) {
-    log.error("An exception occurred in the endpoint implementation. ", t);
+    if (!(t instanceof AccessDeniedException)) {
+      log.error("An exception occurred in the endpoint implementation. ", t);
+    }
 
     switch (t) {
 
@@ -70,10 +73,23 @@ public class GlobalExceptionHandlerInterceptor implements ServerInterceptor {
         log.error("Closing server call with status INVALID_ARGUMENT and error details: {}", errorDetails);
         serverCall.close(Status.ALREADY_EXISTS.withCause(t).withDescription(t.getMessage()), new Metadata());
       }
+      case AccessDeniedException accessDeniedException -> {
+        // A client problem, not a server fault: no stack trace, and no internal detail returned.
+        log.warn("Closing server call with status PERMISSION_DENIED: {}", t.getMessage());
+        serverCall.close(Status.PERMISSION_DENIED.withCause(t).withDescription("Access denied"),
+            new Metadata());
+      }
       default -> {
         log.error("Closing server call with status INTERNAL: {}", t.getMessage());
         serverCall.close(Status.INTERNAL.withCause(t).withDescription(t.getMessage()), new Metadata());
       }
+    }
+  }
+
+  /** Access denials are expected client errors; they are logged once, at WARN, when handled. */
+  private static void logUnexpected(Exception e) {
+    if (!(e instanceof AccessDeniedException)) {
+      log.error("Error |", e);
     }
   }
 

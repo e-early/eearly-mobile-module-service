@@ -1,0 +1,8 @@
+# Local development only. Verbose logging can include request details and personal data,
+# so it must never be enabled in shared or production environments.
+logging.level:
+  si.result.eearly: DEBUG
+  org.springframework:
+    web.client.RestTemplate: DEBUG
+    security: DEBUG
+    cache: TRACE
