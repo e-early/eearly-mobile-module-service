@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Test logging: Spring Boot's console output plus the same onboarding path filter that the
+  service's logback-spring.xml registers, so tests see what the service would write.
+-->
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+  <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+  <turboFilter class="si.result.eearly.logging.OnboardingPathLogFilter"/>
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+  </root>
+</configuration>

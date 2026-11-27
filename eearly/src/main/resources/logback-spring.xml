@@ -10,6 +10,9 @@
       value="${LOG_FILE:-${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}}/spring.log}"/>
   <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
+  <!-- Request paths under /api/v1/onboarding/ carry one-time codes; keep them out of every log. -->
+  <turboFilter class="si.result.eearly.logging.OnboardingPathLogFilter"/>
+
   <springProfile name="development">
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
     <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>

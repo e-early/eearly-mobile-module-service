@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.access.AccessDecisionManager;
 import org.springframework.security.access.AccessDecisionVoter;
 import org.springframework.security.access.vote.UnanimousBased;
@@ -77,10 +78,15 @@ public class WebSecurityConfiguration {
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers("/.well-known/**")
             .permitAll()
-            .requestMatchers("/api/v1/onboarding/create-user")
+            // Issuing onboarding links is for the admin service only (realm role onboard-patient).
+            .requestMatchers("/api/v1/onboarding/create-user",
+                "/api/v1/onboarding/users/*/onboarding-link")
             .hasRole("ONBOARD-PATIENT")
-            .requestMatchers("/eearly-admin-service/api/v1/onboarding/**").permitAll()
-            .requestMatchers("api/v1/onboarding/**").permitAll()
+            // The app store redirect and the redemption of a one-time code are anonymous. The
+            // controller answers everything that is not a valid code with the same 404.
+            .requestMatchers(HttpMethod.GET, "/api/v1/onboarding",
+                "/api/v1/onboarding/*", "/api/v1/onboarding/*/configuration")
+            .permitAll()
             .anyRequest()
             .authenticated())
         .oauth2ResourceServer(oauth2 -> oauth2

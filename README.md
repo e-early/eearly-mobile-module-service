@@ -119,6 +119,9 @@ calling out specifically:
 | `KEYCLOAK_ADMIN_SERVICE_CLIENT_ID` | `admin-service` | Client `eearly-admin-module-service` authenticates as |
 | `MOBILE_KEYCLOAK_REALM` | `eearly-mobile` | Realm used for onboarding links |
 | `MOBILE_KEYCLOAK_CLIENT_ID` | `eearly-mobile` | Client used for onboarding links |
+| `ONBOARDING_CODE_VALIDITY` | `P30D` | How long an onboarding link stays valid (ISO-8601 such as `P30D`, or `30d`); a link works once |
+| `ONBOARDING_RATE_LIMIT_PER_MINUTE` | `10` | Requests per minute and client address for the anonymous onboarding endpoints (`429` above it) |
+| `ONBOARDING_RATE_LIMIT_TRUST_FORWARDED_FOR` | `false` | Use the first `X-Forwarded-For` address as the client address; only behind a proxy that sets the header |
 | `EHR_KEYCLOAK_REALM` | `eearly-ehrbase` | EHR Keycloak realm |
 | `EHR_KEYCLOAK_CLIENT_ID` | `ehrbase` | EHR Keycloak client |
 | `ADMIN_SERVICE_URL` | empty | Base URL of the admin service's internal API; with the three below, enables telling it when a patient changes their language in the app. Left empty, nothing is sent |
@@ -178,10 +181,9 @@ needed below.
 
 ### 1. Get a token authorized to create users
 
-`POST /api/v1/onboarding/create-user` requires the realm role `onboard-patient` — it is **not**
-public despite sitting under `/api/v1/onboarding/**`, which is otherwise permitAll (see
-`WebSecurityConfiguration`: the more specific `create-user` matcher is declared first and wins).
-The `admin-service` client's service account carries that role, so get a token as that client:
+`POST /api/v1/onboarding/create-user` and `POST /api/v1/onboarding/users/{userId}/onboarding-link`
+require the realm role `onboard-patient` (see `WebSecurityConfiguration`). The `admin-service`
+client's service account carries that role, so get a token as that client:
 
 ```bash
 export ADMIN_SERVICE_SECRET=<from mobile Keycloak: Clients -> admin-service -> Credentials>
@@ -204,21 +206,34 @@ curl -s -X POST http://localhost:8081/api/v1/onboarding/create-user \
   -d '{"firstName":"Test","lastName":"User","email":"test.'"$(date +%s)"'@example.com"}' \
   | tee /tmp/user.json | jq .
 
-export ONBOARDING_ID=$(jq -r '.user.id' /tmp/user.json)
+export USER_ID=$(jq -r '.user.id' /tmp/user.json)
+export ONBOARDING_CODE=$(jq -r '.onboardingUrl' /tmp/user.json | awk -F/ '{print $NF}')
 ```
 
-`onboardingUrl` in the response is just `http://localhost:8081/{userId}` — not a path you can call
-directly, and not the `/onboarding/{id}/configuration` shape a quick skim might suggest. Use
-`user.id` instead.
+`onboardingUrl` in the response is `<ONBOARDING_BASE_URL>/{code}`, where `{code}` is a one-time
+onboarding code (43 URL-safe characters). The app takes the link, appends `/configuration` and
+redeems the code at `/api/v1/onboarding/{code}/configuration` (next step); the response carries
+the patient's `userId`. Opening the link in a
+browser (`GET /api/v1/onboarding/{code}`) only redirects to the app store and does not use up the code. A code is valid for
+`ONBOARDING_CODE_VALIDITY` (default 30 days) and works once. To give an existing patient a new
+link, call `POST /api/v1/onboarding/users/{userId}/onboarding-link` with the same service token; it
+returns `{"onboardingUrl": "..."}` and any earlier unused link stops working.
 
 ### 3. Get the patient JWT
 
 ```bash
-curl -s "http://localhost:8081/api/v1/onboarding/${ONBOARDING_ID}/configuration" \
+curl -s "http://localhost:8081/api/v1/onboarding/${ONBOARDING_CODE}/configuration" \
   | tee /tmp/config.json | jq .
 
 export ACCESS_TOKEN=$(jq -r '.accessToken' /tmp/config.json)
 ```
+
+The code is used up by this call: repeating it, or using an unknown, expired or malformed code,
+returns the same `404` (as do links in the old `/{userId}` format). The endpoint is anonymous and limited per client address
+(`ONBOARDING_RATE_LIMIT_PER_MINUTE`, default 10 per minute; `429` when exceeded). Behind a reverse
+proxy that sets `X-Forwarded-For`, set `ONBOARDING_RATE_LIMIT_TRUST_FORWARDED_FOR=true` so the
+limit applies per client and not per proxy. Onboarding codes are never written to the service's
+logs; the bundled nginx configuration masks them in its access log as well.
 
 ### 4. Push measurements (gRPC)
 
@@ -257,7 +272,7 @@ a zone, e.g. `...Z`), not the space-separated `yyyy-MM-dd HH:mm:ss.SSS` `measure
 ```bash
 grpcurl -plaintext \
   -H "Authorization: Bearer ${SERVICE_TOKEN}" \
-  -d "{\"userId\":\"${ONBOARDING_ID}\",\"measurementTypes\":[\"HEART_RATE\",\"OXYGEN_SATURATION\"],\"startDateTime\":\"2026-09-15T09:00:00Z\",\"endDateTime\":\"2026-09-15T11:00:00Z\",\"page\":0,\"size\":10}" \
+  -d "{\"userId\":\"${USER_ID}\",\"measurementTypes\":[\"HEART_RATE\",\"OXYGEN_SATURATION\"],\"startDateTime\":\"2026-09-15T09:00:00Z\",\"endDateTime\":\"2026-09-15T11:00:00Z\",\"page\":0,\"size\":10}" \
   localhost:8082 si.result.eearly.genproto.MeasurementService/GetMeasurementsForUser
 ```
 

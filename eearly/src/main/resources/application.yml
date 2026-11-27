@@ -97,6 +97,16 @@ admin-service:
 
 onboarding:
   api_base_url: ${ONBOARDING_API_BASE_URL}
+  # One-time codes carried by onboarding links.
+  code:
+    # How long a link stays valid: ISO-8601 (P30D) or simple (30d).
+    validity: ${ONBOARDING_CODE_VALIDITY:P30D}
+  # Limit for the anonymous endpoints (app store redirect and code redemption), per client address.
+  rate-limit:
+    requests-per-minute: ${ONBOARDING_RATE_LIMIT_PER_MINUTE:10}
+    # Use the first X-Forwarded-For address instead of the connection's address. Only behind a
+    # proxy that sets (and overwrites) the header; otherwise clients could pick their own address.
+    trust-forwarded-for: ${ONBOARDING_RATE_LIMIT_TRUST_FORWARDED_FOR:false}
   app:
     base-url: ${ONBOARDING_BASE_URL}
     ios:
