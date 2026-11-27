@@ -6,7 +6,7 @@
     <parent>
         <groupId>si.result.eearly</groupId>
         <artifactId>eearly-service</artifactId>
-        <version>0.1.1-SNAPSHOT</version>
+        <version>1.0.0-alpha.1</version>
     </parent>
 
     <artifactId>eearly</artifactId>
