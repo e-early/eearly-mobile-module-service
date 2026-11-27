@@ -12,6 +12,7 @@ import si.result.eearly.domain.profile.UpsertDemographicsCommand;
 import si.result.eearly.domain.profile.UpsertProfileCommand;
 import si.result.eearly.ehr.EhrbaseClient;
 import si.result.eearly.repository.ProfileRepository;
+import si.result.eearly.service.push.PushNotificationService;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -29,6 +30,7 @@ public class ProfileServiceImpl implements ProfileService {
   private final EhrbaseClient ehrbaseClient;
   private final Clock clock;
   private final AdminServiceClient adminServiceClient;
+  private final PushNotificationService pushNotificationService;
 
   @Override
   public Profile upsertProfile(UpsertProfileCommand command) throws ValidationException {
@@ -63,9 +65,7 @@ public class ProfileServiceImpl implements ProfileService {
 
   @Override
   public String sendNotificationForToken(String token, String title, String body) {
-    // Push notifications (Firebase) are not part of this OSS build -- no-op.
-    log.debug("sendNotificationForToken called but push notifications are not configured in this build");
-    return null;
+    return pushNotificationService.sendNotificationForToken(token, title, body);
   }
 
   @Override

@@ -26,6 +26,7 @@ import si.result.eearly.domain.profile.UpsertProfileCommand;
 import si.result.eearly.ehr.EhrbaseClient;
 import si.result.eearly.mapper.ProfileMapper;
 import si.result.eearly.repository.ProfileRepository;
+import si.result.eearly.service.push.PushNotificationService;
 
 /** The patient's language: changed in the app (UpdateLanguage), sent on to the admin service. */
 class ProfileServiceLanguageTest {
@@ -44,7 +45,7 @@ class ProfileServiceLanguageTest {
     adminServiceClient = mock(AdminServiceClient.class);
     when(profileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     profileService = new ProfileServiceImpl(profileRepository, ehrbaseClient, Clock.systemUTC(),
-        adminServiceClient);
+        adminServiceClient, mock(PushNotificationService.class));
   }
 
   @Test
